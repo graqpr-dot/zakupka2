@@ -5,16 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e85d04">
 <title>Закупка на неделю</title>
-
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Закупка">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
@@ -22,32 +18,27 @@
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     background: #f2f2f2; color: #222;
     font-size: 15px; line-height: 1.4;
-    padding-bottom: 90px;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
     -webkit-text-size-adjust: 100%;
   }
-  .wrap {
-    padding: 12px; max-width: 640px; margin: 0 auto;
-    padding-top: calc(12px + env(safe-area-inset-top));
-  }
-  h1 { font-size: 19px; margin: 0 0 4px 0; }
-  .sub { color: #666; font-size: 12.5px; margin-bottom: 12px; }
-  .card-block {
-    background: #fff; border-radius: 10px;
-    padding: 12px; margin-bottom: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  }
+  .wrap { padding: 12px; max-width: 640px; margin: 0 auto; padding-top: calc(12px + env(safe-area-inset-top)); }
+  h1 { font-size: 18px; margin: 0 0 4px 0; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 12px; }
+  h2 { font-size: 15px; margin: 0 0 8px 0; }
+  h3 { font-size: 14px; margin: 12px 0 6px 0; }
+  .card-block { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
   label { font-size: 11.5px; color: #666; font-weight: 600; display: block; margin-bottom: 4px; }
-  select, input[type="number"] {
+  select, input[type="number"], input[type="text"], input[type="date"] {
     width: 100%; padding: 11px 10px;
     border: 1px solid #ccc; border-radius: 8px;
     font-size: 16px; background: #fff;
   }
   button {
-    width: 100%; padding: 12px;
+    width: 100%; padding: 11px;
     border: none; border-radius: 8px;
-    font-size: 15px; font-weight: 600;
+    font-size: 14px; font-weight: 600;
     background: #e85d04; color: #fff;
     cursor: pointer; margin-top: 8px;
   }
@@ -55,14 +46,8 @@
   button.alt { background: #555; }
   button.copy { background: #1976d2; }
   button.share { background: #43a047; }
-  button.small { padding: 7px 10px; font-size: 13px; margin-top: 0; width: auto; }
-  #installBtn {
-    display: none; width: 100%; padding: 11px;
-    background: #1976d2; border-radius: 8px;
-    font-size: 14px; font-weight: 600;
-    margin-top: 8px; color: #fff; border: none;
-  }
-  .section-title { font-size: 13px; font-weight: 700; color: #444; margin: 4px 0 8px 0; }
+  button.danger { background: #c62828; }
+  button.small { padding: 6px 10px; font-size: 12px; margin-top: 0; width: auto; }
 
   .menu-item, .vs-item {
     display: flex; align-items: flex-start; gap: 8px;
@@ -70,89 +55,39 @@
     background: #fafafa; margin-bottom: 6px;
     cursor: pointer; user-select: none;
   }
-  .menu-item:active, .vs-item:active { background: #f0f0f0; }
+  .menu-item.checked { background: #fff3e0; }
+  .vs-item.checked { background: #fff8e1; }
+  .menu-item.disabled, .vs-item.disabled { opacity: 0.4; }
   .menu-item input, .vs-item input {
     margin: 2px 0 0 0; width: 20px; height: 20px;
     accent-color: #e85d04; flex-shrink: 0;
   }
-  .menu-item.checked { background: #fff3e0; }
-  .vs-item.checked { background: #fff8e1; }
-  .menu-item.disabled, .vs-item.disabled { opacity: 0.4; }
-  .menu-name { font-size: 13.5px; line-height: 1.3; }
+  .menu-name { font-size: 13px; line-height: 1.3; }
 
   .summary { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .sum-card {
-    flex: 1; min-width: 70px;
-    background: #fff3e0; border-radius: 8px;
-    padding: 8px 10px; text-align: center;
-    border-left: 3px solid #e85d04;
-  }
+  .sum-card { flex: 1; min-width: 60px; background: #fff3e0; border-radius: 8px; padding: 8px 10px; text-align: center; border-left: 3px solid #e85d04; }
   .sum-card b { display: block; font-size: 16px; margin-top: 2px; }
   .sum-card span { font-size: 10.5px; color: #666; }
 
-  .block-title {
-    font-size: 14px; font-weight: 700;
-    padding: 10px 12px; border-radius: 8px;
-    margin: 14px 0 8px 0;
-  }
+  .block-title { font-size: 13.5px; font-weight: 700; padding: 9px 12px; border-radius: 8px; margin: 14px 0 8px 0; }
   .block-once { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #43a047; }
   .block-weekly { background: #fff3e0; color: #e65100; border-left: 4px solid #e85d04; }
 
-  .prod {
-    background: #fff; border-radius: 10px;
-    padding: 10px 12px; margin-bottom: 6px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    border: 1px solid #eee;
-  }
-  .prod-name {
-    font-weight: 600; font-size: 14px;
-    margin-bottom: 6px; display: flex;
-    justify-content: space-between; align-items: flex-start;
-    gap: 6px;
-  }
-  .prod-name .src {
-    font-size: 10px; color: #888; font-weight: 400;
-    white-space: nowrap;
-  }
-  .prod-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px; align-items: end;
-  }
+  .prod { background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #eee; }
+  .prod-name { font-weight: 600; font-size: 13.5px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 6px; }
+  .prod-name .src { font-size: 10px; color: #888; font-weight: 400; white-space: nowrap; }
+  .prod-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: end; }
   .prod-row .cell { display: flex; flex-direction: column; min-width: 0; }
   .prod-row label { font-size: 10px; color: #777; margin-bottom: 2px; }
-  .prod-row input {
-    padding: 9px 6px; font-size: 16px;
-    text-align: right; min-width: 0;
-  }
+  .prod-row input { padding: 9px 6px; font-size: 16px; text-align: right; min-width: 0; }
   .prod-row .input-wrap { position: relative; }
-  .prod-row .input-wrap .unit {
-    position: absolute; right: 4px; top: 50%;
-    transform: translateY(-50%);
-    font-size: 10px; color: #888;
-    pointer-events: none; background: rgba(255,255,255,0.9);
-    padding: 0 2px;
-  }
+  .prod-row .input-wrap .unit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #888; pointer-events: none; background: rgba(255,255,255,0.9); padding: 0 2px; }
   .prod-row input { padding-right: 24px; }
-  .prod-row .total {
-    padding: 9px 6px; font-size: 14px;
-    text-align: right; font-weight: 600;
-    background: #fffaf2; border-radius: 6px;
-    border: 1px solid #eee;
-    white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .prod-row .total { padding: 9px 6px; font-size: 14px; text-align: right; font-weight: 600; background: #fffaf2; border-radius: 6px; border: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .changed input { border-color: #f0b400; background: #fffbe6; }
 
-  .prod-meta {
-    margin-top: 6px; font-size: 11px;
-    color: #666; display: flex;
-    gap: 8px; flex-wrap: wrap; align-items: center;
-  }
-  .shelf-badge {
-    display: inline-block; padding: 2px 7px;
-    border-radius: 8px; font-size: 10.5px; font-weight: 600;
-  }
+  .prod-meta { margin-top: 6px; font-size: 11px; color: #666; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .shelf-badge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 10.5px; font-weight: 600; }
   .shelf-vshort { background: #ffcdd2; color: #b71c1c; }
   .shelf-short { background: #ffe0b2; color: #e65100; }
   .shelf-medium { background: #fff9c4; color: #827717; }
@@ -160,177 +95,311 @@
   .shelf-vlong { background: #c8e6c9; color: #1b5e20; }
   .perweek { font-style: italic; color: #1976d2; font-size: 10.5px; }
 
-  .week-block {
-    background: #fce4ec; border-radius: 8px;
-    padding: 10px 12px; margin: 8px 0;
-    font-size: 12.5px; color: #880e4f;
-  }
+  .week-block { background: #fce4ec; border-radius: 8px; padding: 10px 12px; margin: 8px 0; font-size: 12.5px; color: #880e4f; }
   .week-block h4 { margin: 0 0 4px 0; font-size: 13px; }
   .week-block ul { margin: 4px 0 0 18px; padding: 0; }
 
-  .sticky-total {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    display: flex; justify-content: space-between; align-items: center;
-    gap: 8px; z-index: 100;
-  }
-  .sticky-total .info { font-size: 11.5px; color: #666; line-height: 1.25; flex-shrink: 1; min-width: 0; }
-  .sticky-total .info b { display: block; font-size: 19px; color: #e85d04; }
-  .sticky-btns { display: flex; gap: 6px; flex-shrink: 0; }
-  .sticky-btns button {
-    padding: 10px 12px; margin: 0;
-    font-size: 13px; white-space: nowrap; width: auto;
-  }
-  .icon-btn { padding: 10px 12px; font-size: 18px; line-height: 1; }
-
   .hint { font-size: 11.5px; color: #888; margin: 8px 0; }
-  .tip {
-    background: #e3f2fd; border-left: 4px solid #1976d2;
-    padding: 10px 12px; margin: 8px 0;
-    border-radius: 6px; font-size: 12px;
+  .tip { background: #e3f2fd; border-left: 4px solid #1976d2; padding: 10px 12px; margin: 8px 0; border-radius: 6px; font-size: 12px; }
+  .warning { background: #fff3cd; border-left: 4px solid #f0b400; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin: 8px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  details { background: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  details summary { cursor: pointer; font-weight: 700; font-size: 14px; padding: 4px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details summary::after { content: '▼'; font-size: 11px; color: #888; }
+  details[open] summary::after { content: '▲'; }
+
+  /* Нижние табы */
+  .tabs {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; border-top: 1px solid #ddd;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
   }
-  .warning {
-    background: #fff3cd; border-left: 4px solid #f0b400;
-    padding: 10px 12px; border-radius: 6px;
-    font-size: 12.5px; margin: 8px 0;
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  .tab-btn {
+    padding: 8px 4px 10px; border: none; background: none;
+    color: #666; font-size: 10.5px; font-weight: 500;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    margin: 0; border-radius: 0; width: 100%;
   }
+  .tab-btn .icon { font-size: 22px; line-height: 1; }
+  .tab-btn.active { color: #e85d04; }
+  .tab-btn.active .icon { transform: scale(1.1); }
+
+  /* Sticky итог — только на закупке */
+  .sticky-total {
+    position: fixed; bottom: calc(70px + env(safe-area-inset-bottom));
+    left: 0; right: 0; background: #fff;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+    padding: 10px 12px;
+    display: none; justify-content: space-between; align-items: center;
+    gap: 8px; z-index: 99;
+  }
+  .sticky-total.show { display: flex; }
+  .sticky-total .info { font-size: 11.5px; color: #666; line-height: 1.25; flex-shrink: 1; min-width: 0; }
+  .sticky-total .info b { display: block; font-size: 18px; color: #e85d04; }
+  .sticky-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .sticky-btns button { padding: 10px 12px; margin: 0; font-size: 13px; white-space: nowrap; width: auto; }
+  .icon-btn { padding: 10px 12px; font-size: 18px; line-height: 1; }
+  .btn-label { display: inline; }
+
+  /* Табы-контент */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Рецепты */
+  .recipe {
+    background: #fff; border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border-left: 3px solid #e85d04;
+  }
+  .recipe-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; cursor: pointer; user-select: none;
+  }
+  .recipe-head h4 { margin: 0; font-size: 14px; }
+  .recipe-for { font-size: 11px; color: #666; margin-top: 2px; }
+  .recipe-toggle { font-size: 18px; color: #888; flex-shrink: 0; line-height: 1; }
+  .recipe-body { margin-top: 8px; display: none; font-size: 13px; }
+  .recipe.open .recipe-body { display: block; }
+  .recipe.open .recipe-toggle { transform: rotate(180deg); }
+  .recipe-section { margin-top: 6px; }
+  .recipe-section b { color: #555; font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .recipe-section p, .recipe-section li { margin: 3px 0; font-size: 13px; }
+  .recipe-section ol { margin: 3px 0 0 20px; padding: 0; }
+  .recipe-bju {
+    margin-top: 8px; padding: 6px 10px;
+    background: #fff3e0; border-radius: 6px;
+    font-size: 12px; color: #a0522d;
+  }
+  .recipe-time { font-size: 11px; color: #666; }
+
+  .menu-recipe-group { margin-bottom: 16px; }
+  .menu-recipe-title { font-size: 14px; font-weight: 700; color: #333; margin: 12px 0 8px 0; padding: 8px 12px; background: #f0f0f0; border-radius: 8px; }
+
+  /* Дневник */
+  .check-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: #fff; border-radius: 8px;
+    margin-bottom: 6px; border: 1px solid #eee;
+  }
+  .check-item .info { flex: 1; min-width: 0; }
+  .check-item .date { font-size: 11px; color: #888; }
+  .check-item .sum { font-size: 16px; font-weight: 700; color: #e85d04; }
+  .check-item .note { font-size: 12px; color: #666; margin-top: 2px; }
+  .check-item button { padding: 6px 10px; margin: 0; background: #c62828; font-size: 12px; width: auto; flex-shrink: 0; }
+
+  .check-total {
+    background: #fff3e0; border-radius: 8px; padding: 12px 14px;
+    margin-top: 10px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .check-total b { font-size: 20px; color: #e85d04; }
+
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px;
+  }
+  .compare-cell {
+    background: #fafafa; border-radius: 8px; padding: 8px 6px; text-align: center;
+    border: 1px solid #eee;
+  }
+  .compare-cell span { font-size: 10.5px; color: #666; display: block; }
+  .compare-cell b { font-size: 15px; margin-top: 2px; display: block; }
+  .compare-cell.diff-pos b { color: #c62828; }
+  .compare-cell.diff-neg b { color: #43a047; }
+
+  /* Toast */
   .toast {
-    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: calc(80px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%);
     background: #43a047; color: #fff; padding: 8px 16px;
     border-radius: 20px; font-size: 13px; font-weight: 600;
     opacity: 0; transition: opacity 0.3s; pointer-events: none;
     z-index: 200; max-width: 90vw; text-align: center;
   }
   .toast.show { opacity: 1; }
-  .toast.copied { background: #1976d2; }
   .toast.error { background: #c62828; }
+  .toast.copied { background: #1976d2; }
 
-  details {
-    background: #fff; border-radius: 10px;
-    padding: 10px 12px; margin-bottom: 10px;
-  }
-  details summary {
-    cursor: pointer; font-weight: 700;
-    font-size: 14px; padding: 4px 0;
-    list-style: none; display: flex;
-    justify-content: space-between; align-items: center;
-  }
-  details summary::after { content: '▼'; font-size: 11px; color: #888; }
-  details[open] summary::after { content: '▲'; }
-  details[open] { padding-bottom: 12px; }
-
-  /* ===== Маленькие экраны (iPhone SE 1st gen, 320px) ===== */
+  /* Мобильная адаптация */
   @media (max-width: 400px) {
-    body { font-size: 14px; padding-bottom: 84px; }
+    body { font-size: 14px; }
     .wrap { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
     h1 { font-size: 17px; }
     .sub { font-size: 11px; margin-bottom: 8px; }
     .card-block { padding: 10px; margin-bottom: 8px; }
     .prod { padding: 8px 9px; margin-bottom: 5px; }
-    .prod-name { font-size: 13px; margin-bottom: 4px; }
-    .prod-name .src { font-size: 9px; }
+    .prod-name { font-size: 13px; }
     .prod-row { gap: 4px; }
     .prod-row input { padding: 8px 3px; padding-right: 20px; font-size: 16px; }
     .prod-row .input-wrap .unit { font-size: 9px; right: 2px; }
     .prod-row .total { padding: 8px 4px; font-size: 12px; }
-    .prod-row label { font-size: 9px; margin-bottom: 1px; }
-    .prod-meta { font-size: 10px; margin-top: 4px; }
-    .shelf-badge { font-size: 9.5px; padding: 1px 5px; }
-    .perweek { font-size: 9.5px; }
-    .menu-item, .vs-item { padding: 8px 6px; margin-bottom: 4px; }
+    .prod-row label { font-size: 9px; }
+    .prod-meta { font-size: 10px; }
     .menu-name { font-size: 12.5px; }
-    .block-title { font-size: 13px; padding: 8px 10px; margin: 10px 0 6px 0; }
-    .sum-card { padding: 6px 8px; min-width: 60px; }
-    .sum-card b { font-size: 14px; }
-    .sum-card span { font-size: 9.5px; }
-    .sticky-total { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .tab-btn .icon { font-size: 20px; }
+    .tab-btn { font-size: 9.5px; }
+    .btn-label { display: none; }
     .sticky-total .info { font-size: 10.5px; }
     .sticky-total .info b { font-size: 17px; }
-    .sticky-btns button { padding: 9px 10px; font-size: 12px; }
-    .icon-btn { padding: 9px 10px; font-size: 16px; }
-    .btn-label { display: none; }
-    .week-block { padding: 8px 10px; font-size: 11.5px; }
-    .week-block h4 { font-size: 12px; }
+    .recipe { padding: 10px; }
+    .recipe-head h4 { font-size: 13px; }
+    .check-item { padding: 8px 10px; }
+    .check-item .sum { font-size: 14px; }
+    .compare-cell b { font-size: 13px; }
   }
-
-  /* Очень узкие экраны (< 340px) — ещё компактнее */
-  @media (max-width: 340px) {
-    .prod-row .total { font-size: 11px; }
-    .prod-row input { padding-right: 16px; }
-    .prod-row .input-wrap .unit { font-size: 8px; }
-    .prod-name { font-size: 12px; }
-    .sum-card { min-width: 50px; padding: 5px 6px; }
-    .sum-card b { font-size: 13px; }
-  }
-
   @media print {
-    body { background: #fff; padding: 0; }
-    .sticky-total, button, .no-print, details summary::after { display: none !important; }
-    .prod, .card-block, details { box-shadow: none; border: 1px solid #ddd; }
+    body { background: #fff; padding: 0; padding-bottom: 0; }
+    .tabs, .sticky-total, button, .no-print, details summary::after { display: none !important; }
+    .tab-content { display: block !important; }
+    .prod, .card-block, details, .recipe { box-shadow: none; border: 1px solid #ddd; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>🛒 Закупка на неделю</h1>
-<p class="sub">Меню + ВС + недели + цены + сроки. Работает офлайн.</p>
+<div class="tab-content active" id="tab-shop">
+  <h1>🛒 Закупка на неделю</h1>
+  <p class="sub">Меню + ВС + недели + цены + сроки.</p>
 
-<div class="card-block">
-  <div class="row">
-    <div>
-      <label>Человек</label>
-      <input type="number" id="peopleInput" min="1" max="20" value="2" onchange="onSettingsChange()">
+  <div class="card-block">
+    <div class="row">
+      <div>
+        <label>Человек</label>
+        <input type="number" id="peopleInput" min="1" max="20" value="2" onchange="onSettingsChange()">
+      </div>
+      <div>
+        <label>Недель</label>
+        <select id="weeksInput" onchange="onSettingsChange()">
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+        </select>
+      </div>
     </div>
-    <div>
-      <label>Недель</label>
-      <select id="weeksInput" onchange="onSettingsChange()">
-        <option value="1">1</option><option value="2">2</option>
-        <option value="3">3</option><option value="4">4</option>
-      </select>
-    </div>
+    <button class="alt" onclick="window.print()">🖨 Сохранить PDF</button>
+    <button id="installBtn" onclick="installApp()" style="display:none">📲 Установить приложение</button>
   </div>
-  <button class="alt" onclick="window.print()">🖨 Сохранить PDF</button>
-  <button id="installBtn" onclick="installApp()">📲 Установить приложение</button>
+
+  <details open>
+    <summary>📋 Меню (до 5)</summary>
+    <div id="menuChecks"></div>
+  </details>
+
+  <details>
+    <summary>🍔 Блюдо на ВС (до 3)</summary>
+    <div id="vsChecks"></div>
+  </details>
+
+  <div class="warning" id="overrideWarning" style="display:none;">
+    ⚠️ Правок: <b id="overrideCount">0</b>
+    <button class="small" onclick="resetOverrides()">Кол-во</button>
+    <button class="small" onclick="resetPrices()">Цены</button>
+  </div>
+
+  <div id="result"></div>
 </div>
 
-<details open>
-  <summary>📋 Меню (до 5)</summary>
-  <div id="menuChecks"></div>
-</details>
-
-<details>
-  <summary>🍔 Блюдо на ВС (до 3)</summary>
-  <div id="vsChecks"></div>
-</details>
-
-<div class="warning" id="overrideWarning" style="display:none;">
-  ⚠️ Правок: <b id="overrideCount">0</b>
-  <button class="small" onclick="resetOverrides()">Кол-во</button>
-  <button class="small" onclick="resetPrices()">Цены</button>
+<div class="tab-content" id="tab-recipes">
+  <h1>🍳 Рецепты</h1>
+  <p class="sub">Для выбранных меню и блюд на ВС</p>
+  <div id="recipesList"></div>
 </div>
 
-<div id="result"></div>
+<div class="tab-content" id="tab-diary">
+  <h1>📊 Дневник расхода</h1>
+  <p class="sub">Сколько реально потратили по чекам</p>
+
+  <div class="card-block">
+    <h2>Записать чек</h2>
+    <div class="row" style="margin-bottom:6px;">
+      <div>
+        <label>Дата</label>
+        <input type="date" id="checkDate">
+      </div>
+      <div>
+        <label>Сумма, ₽</label>
+        <input type="number" id="checkSum" placeholder="0" min="0" step="1">
+      </div>
+    </div>
+    <input type="text" id="checkNote" placeholder="Комментарий (не обязательно)" style="margin-bottom:8px;">
+    <button onclick="addCheck()">✅ Записать</button>
+  </div>
+
+  <div class="card-block">
+    <h2>История чеков</h2>
+    <div id="checksList"><p class="hint">Пока нет записей.</p></div>
+    <div id="checksTotal"></div>
+    <div id="compareBlock"></div>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-settings">
+  <h1>⚙️ Настройки</h1>
+
+  <div class="card-block">
+    <h2>🔔 Напоминание</h2>
+    <label>День закупки</label>
+    <select id="reminderDay" onchange="saveReminderDay()">
+      <option value="0">Воскресенье</option>
+      <option value="1">Понедельник</option>
+      <option value="2">Вторник</option>
+      <option value="3">Среда</option>
+      <option value="4">Четверг</option>
+      <option value="5">Пятница</option>
+      <option value="6">Суббота</option>
+    </select>
+    <p class="hint" id="nextReminderText"></p>
+    <button onclick="downloadICS()">📅 Добавить в календарь</button>
+    <button class="alt" onclick="requestNotifications()">🔔 Разрешить уведомления</button>
+    <p class="hint">Уведомления работают только при открытом приложении. Для надёжности используйте календарь (.ics) — он даст напоминание через системный календарь.</p>
+  </div>
+
+  <div class="card-block">
+    <h2>💾 Данные</h2>
+    <button class="alt" onclick="exportData()">📤 Экспорт в файл</button>
+    <button class="alt" onclick="importData()">📥 Импорт из файла</button>
+    <button class="danger" onclick="resetAllData()">🗑 Сбросить всё</button>
+    <p class="hint">Экспорт создаст файл с настройками, чеками и напоминанием. Его можно перенести на другое устройство или сохранить как резервную копию.</p>
+  </div>
+
+  <div class="card-block">
+    <h2>ℹ️ О приложении</h2>
+    <p class="hint">Закупка на неделю — PWA. Устанавливается на главный экран, работает офлайн, сохраняет данные в браузере.</p>
+  </div>
+</div>
 
 </div>
 
-<div class="sticky-total">
+<div class="sticky-total" id="stickyTotal">
   <div class="info">
     <span id="stickySub">Итого:</span>
     <b id="stickySum">0 ₽</b>
   </div>
   <div class="sticky-btns">
     <button class="share icon-btn" onclick="shareList()" title="Поделиться">📤</button>
-    <button class="copy" onclick="copyList()">📋 <span class="btn-label">Копировать</span></button>
+    <button class="copy" onclick="copyList()">📋 <span class="btn-label">Копир.</span></button>
   </div>
 </div>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="shop" onclick="switchTab('shop')">
+    <span class="icon">🛒</span><span>Закупка</span>
+  </button>
+  <button class="tab-btn" data-tab="recipes" onclick="switchTab('recipes')">
+    <span class="icon">🍳</span><span>Рецепты</span>
+  </button>
+  <button class="tab-btn" data-tab="diary" onclick="switchTab('diary')">
+    <span class="icon">📊</span><span>Дневник</span>
+  </button>
+  <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
+    <span class="icon">⚙️</span><span>Настройки</span>
+  </button>
+</nav>
 
 <div id="toast" class="toast"></div>
 
 <script>
-// ==================== ДАННЫЕ (все 11 меню + 7 ВС) ====================
+// ==================== ДАННЫЕ ====================
 const menus = {
   1:{name:"№1 — курица + рыба + творог",items:[["Курица (филе/бёдра)",1.0,"кг",400],["Фарш индейки",0.7,"кг",320],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Йогурт натуральный",0.15,"кг",70],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Вермишель",0.1,"кг",30],["Картофель",0.5,"кг",50],["Капуста",1.0,"кг",60],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
   2:{name:"№2 — индейка + говядина + рыба",items:[["Индейка (филе/бёдра)",0.8,"кг",400],["Говядина (мякоть)",0.7,"кг",455],["Курица (бёдра/голени)",0.7,"кг",280],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Греческий йогурт",0.4,"кг",220],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Булгур",0.4,"кг",80],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Капуста",0.8,"кг",50],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.6,"кг",110],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Желатин/сахзам/корица",1,"компл",150],["Масло растит., специи",1,"компл",150]]},
@@ -353,6 +422,7 @@ const vsData = {
   6:{name:"Хот-дог с индейкой",items:[["Булочка для хот-дога",1,"шт",25],["Сосиска из индейки",0.08,"кг",40],["Сыр",0.015,"кг",9],["Огурец маринованный",0.03,"кг",9],["Горчица/кетчуп",0.015,"кг",5],["Картофель",0.2,"кг",20],["Масло растит.",0.01,"кг",2]]},
   7:{name:"Наггетсы + пюре",items:[["Курица (филе/бёдра)",0.15,"кг",60],["Яйца",1,"шт",8],["Панировка (сухари)",0.03,"кг",5],["Картофель",0.2,"кг",20],["Молоко",0.05,"л",4],["Масло сливочное",0.01,"кг",8],["Масло растит.",0.01,"кг",2]]}
 };
+
 const SHELF = {
   chicken:["90+ дн",90],turkey:["90+ дн",90],beef:["90+ дн",90],pork:["90+ дн",90],mince:["90 дн",90],
   fish_white:["90+ дн",90],fish_red:["90+ дн",90],shrimp:["90 дн",90],sausage:["5–7 дн",7],
@@ -372,6 +442,7 @@ const SHELF = {
   gelatin:["180+ дн",180],chocolate:["180 дн",180],tomato_paste:["180+ дн*",180],
   sauce:["5–7 дн",6],tomato_sauce:["180+ дн*",180],olives:["180+ дн",180],mustard_ketchup:["180+ дн",180]
 };
+
 const productInfo = {
   chicken:{name:"Курица",unit:"кг",cat:"Мясо / рыба",perishable:false},turkey:{name:"Индейка",unit:"кг",cat:"Мясо / рыба",perishable:false},
   beef:{name:"Говядина",unit:"кг",cat:"Мясо / рыба",perishable:false},pork:{name:"Свинина",unit:"кг",cat:"Мясо / рыба",perishable:false},
@@ -408,6 +479,223 @@ const productInfo = {
   mustard_ketchup:{name:"Горчица/кетчуп",unit:"кг",cat:"Прочее",perishable:false}
 };
 
+// ==================== РЕЦЕПТЫ ====================
+// Общая база рецептов по ID
+const R = {
+  "grechka-kuritsa": {name:"Гречка с куриной грудкой и овощами", time:"40 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"гречка 200 г сух., курица 400 г, морковь 100 г, лук 50 г, масло 15 г, соль/перец/паприка",
+    steps:["Гречку промыть, залить 400 мл воды, варить 15–18 мин","Курицу нарезать 2×2 см, обжарить 5–7 мин","Добавить морковь и лук, тушить 7–10 мин","Смешать с гречкой, приправить"],
+    bju:"~420 ккал · Б 32 · Ж 12 · У 45"},
+  "kuriny-sup": {name:"Куриный суп с вермишелью", time:"50 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"курица 300 г, картофель 150 г, вермишель 100 г сух., морковь 100 г, лук 50 г, капуста 150 г, вода 1,2 л",
+    steps:["Курицу залить водой, варить 25 мин, снимая пену","Добавить картофель, морковь, лук — 10 мин","Капусту — 5 мин, вермишель — 3–4 мин","Курицу нарезать, вернуть в суп"],
+    bju:"~310 ккал · Б 22 · Ж 8 · У 40"},
+  "ris-farsh": {name:"Рис с фаршем индейки и овощами", time:"35 мин", for:"Обед Чт–Вс · 4 порции",
+    ing:"рис 270 г сух., фарш индейки 670 г, морковь 130 г, лук 130 г, заморож. овощи 130 г, масло 20 г",
+    steps:["Рис отварить (550 мл, 12–15 мин)","Лук+морковь обжарить 5 мин","Добавить фарш, обжарить 8–10 мин","Овощи — 5 мин, смешать с рисом"],
+    bju:"~450 ккал · Б 28 · Ж 14 · У 50"},
+  "ryba-zapechen": {name:"Запечённая рыба с овощами", time:"35 мин", for:"Ужин · 3–4 порции",
+    ing:"рыба 800 г, овощная смесь 670 г, масло 20 г, лимон, соль, перец",
+    steps:["Рыбу разморозить, посолить, поперчить, сбрызнуть лимоном","Овощи на противень, сбрызнуть маслом","Рыбу сверху","Запекать 190 °C 20–25 мин"],
+    bju:"~300 ккал · Б 30 · Ж 12 · У 18"},
+  "ovsyanka-kefir": {name:"Овсянка на кефире (на ночь)", time:"2 мин вечером", for:"Завтрак Вт/Пт · 1 порция",
+    ing:"овсяные хлопья 40 г, кефир 150 мл, яблоко 100 г или банан 50 г",
+    steps:["Вечером засыпать хлопья в контейнер","Залить кефиром, убрать в холодильник","Утром добавить нарезанный фрукт, перемешать"],
+    bju:"~260 ккал · Б 10 · Ж 5 · У 42"},
+  "yabloko-tvorog": {name:"Запечённое яблоко с творогом", time:"20 мин", for:"Десерт · 1 порция",
+    ing:"яблоко 180 г, творог 50 г, корица, сахзам",
+    steps:["Удалить сердцевину","Начинить творогом с корицей","180 °C 15–20 мин (или микроволновка 4–5 мин)"],
+    bju:"~120 ккал · Б 6 · Ж 3 · У 18"},
+  "pp-zhele": {name:"ПП-желе ягодное", time:"10 мин + 2 ч", for:"Десерт · 3 порции",
+    ing:"ягоды 150 г, вода 150 мл, желатин 5 г, сахзам",
+    steps:["Желатин замочить в 50 мл воды 5 мин","Ягоды размять","Растворить желатин в 100 мл горячей воды (не кипятить)","Смешать, разлить, охладить 2–3 ч"],
+    bju:"~50 ккал · Б 1 · Ж 0 · У 10"},
+  "tvorozh-muss": {name:"Творожный мусс с бананом", time:"5 мин", for:"Десерт · 2 порции",
+    ing:"творог 200 г, банан 100 г, какао 3 г, сахзам",
+    steps:["Банан размять","Добавить творог, какао, сахзам, взбить","Охладить 15 мин"],
+    bju:"~150 ккал · Б 12 · Ж 4 · У 18"},
+  "frukt-salad": {name:"Фруктовый салат с йогуртом", time:"3 мин", for:"Десерт · 2 порции",
+    ing:"яблоко 80 г, банан 50 г, йогурт 60 г",
+    steps:["Нарезать фрукты","Смешать с йогуртом"],
+    bju:"~120 ккал · Б 3 · Ж 2 · У 24"},
+  "bulgur-indeyka": {name:"Булгур с индейкой и овощами", time:"40 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"булгур 200 г сух., индейка 450 г, морковь 100 г, лук 100 г, заморож. овощи 100 г, масло 15 г",
+    steps:["Булгур залить 400 мл кипятка, варить 12–15 мин","Индейку нарезать, обжарить 7–8 мин","Лук+морковь 7 мин, овощи 5 мин","Смешать с булгуром, приправить"],
+    bju:"~430 ккал · Б 33 · Ж 12 · У 46"},
+  "kuritsa-zapechen": {name:"Запечённая курица с овощами", time:"50 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"куриные бёдра 700 г, морковь 150 г, лук 100 г, капуста 200 г, заморож. овощи 150 г, масло 15 г",
+    steps:["Курицу натереть специями","Овощи крупно нарезать на противень","Курицу сверху","190–200 °C 35–40 мин"],
+    bju:"~360 ккал · Б 30 · Ж 18 · У 18"},
+  "grechka-govyadina": {name:"Гречка с говядиной и овощами", time:"60 мин", for:"Обед Чт–Вс · 4 порции",
+    ing:"гречка 270 г сух., говядина 530 г, морковь 130 г, лук 130 г, масло 20 г",
+    steps:["Говядину нарезать, обжарить 5 мин","Лук+морковь — 5 мин","Влить 260 мл воды, тушить 30–40 мин","Гречку отварить отдельно, смешать"],
+    bju:"~460 ккал · Б 30 · Ж 16 · У 48"},
+  "pp-zefir": {name:"ПП-зефир ягодный", time:"15 мин + 3 ч", for:"Десерт · 3 порции",
+    ing:"ягоды 150 г, греческий йогурт 100 г, желатин 10 г, сахзам",
+    steps:["Желатин замочить в 50 мл воды 5 мин","Ягоды пюрировать","Йогурт + пюре + сахзам","Растворить желатин на бане, вмешать, разлить, охладить 3 ч"],
+    bju:"~70 ккал · Б 6 · Ж 2 · У 8"},
+  "tvorozh-zhele": {name:"Творожно-ягодное желе", time:"10 мин + 2 ч", for:"Десерт · 2 порции",
+    ing:"творог 200 г, ягоды 100 г, желатин 5 г, сахзам",
+    steps:["Желатин замочить 5 мин","Творог взбить с сахзамом","Ягоды размять","Растворить желатин, смешать с творогом и ягодами, охладить 2 ч"],
+    bju:"~110 ккал · Б 12 · Ж 3 · У 9"},
+  "plov": {name:"Плов с курицей и морковью", time:"45 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"рис 200 г сух., курица 500 г, морковь 200 г, лук 50 г, масло 15 г, зира, барбарис",
+    steps:["Курицу нарезать, обжарить 7 мин","Лук+морковь соломкой — 7 мин","Добавить специи, всыпать рис, залить 400 мл кипятка","Крышка, малый огонь 20–25 мин"],
+    bju:"~450 ккал · Б 28 · Ж 14 · У 52"},
+  "sup-frikadelki": {name:"Овощной суп с фрикадельками", time:"40 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"фарш 400 г, яйцо 1 шт., картофель 300 г, морковь 100 г, лук 50 г, заморож. овощи 100 г, вода 1,2 л",
+    steps:["Фарш + яйцо + специи → фрикадельки","В кипящую воду опустить, варить 10 мин","Картофель, морковь, лук — 10 мин","Овощная смесь, зелень — 5–7 мин"],
+    bju:"~260 ккал · Б 20 · Ж 10 · У 24"},
+  "grechka-mintay": {name:"Гречка с минтаем и овощами", time:"40 мин", for:"Обед Чт–Вс · 4 порции",
+    ing:"гречка 270 г сух., минтай 670 г, морковь 130 г, лук 130 г, масло 20 г, лимон",
+    steps:["Гречку отварить","Минтай разморозить, нарезать","Лук+морковь 5 мин, рыба — 10–12 мин","Смешать с гречкой, сбрызнуть лимоном"],
+    bju:"~380 ккал · Б 32 · Ж 10 · У 40"},
+  "kapusta-kuritsa": {name:"Тушёная капуста с курицей", time:"40 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"капуста 930 г, курица 530 г, морковь 130 г, лук 130 г, масло 20 г, томатная паста 25 г",
+    steps:["Курицу нарезать, обжарить 5–7 мин","Лук+морковь — 5 мин","Капуста, паста, 130 мл воды","Тушить 20–25 мин"],
+    bju:"~300 ккал · Б 24 · Ж 12 · У 24"},
+  "tvorog-banan": {name:"Творог с бананом", time:"2 мин", for:"Завтрак/десерт · 1 порция",
+    ing:"творог 150 г, банан 50 г",
+    steps:["Банан нарезать","Смешать с творогом"],
+    bju:"~180 ккал · Б 15 · Ж 4 · У 22"},
+  "ris-indeyka": {name:"Рис с индейкой и овощами", time:"35 мин", for:"Обед · 3–4 порции",
+    ing:"рис 270 г сух., индейка 670 г, морковь 130 г, лук 130 г, заморож. овощи 130 г, масло 20 г",
+    steps:["Рис отварить","Индейку нарезать, обжарить 8–10 мин","Лук+морковь 5 мин, овощи 5 мин","Смешать с рисом"],
+    bju:"~440 ккал · Б 32 · Ж 13 · У 48"},
+  "bulgur-govyadina": {name:"Булгур с говядиной и овощами", time:"60 мин", for:"Обед Чт–Вс · 4 порции",
+    ing:"булгур 270 г сух., говядина 530 г, морковь 130 г, лук 130 г, масло 20 г, тмин",
+    steps:["Говядину нарезать, обжарить 5 мин","Лук+морковь — 5 мин","260 мл воды, тушить 30–40 мин","Булгур отварить отдельно, смешать"],
+    bju:"~460 ккал · Б 30 · Ж 16 · У 48"},
+  "kotlety-kurinye": {name:"Куриные котлеты на пару + овощи", time:"35 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"куриный фарш 800 г, яйцо 1 шт., лук 65 г, заморож. овощи 670 г, масло 13 г",
+    steps:["Фарш + яйцо + лук → котлеты по ~100 г","На пару 20–25 мин","Овощи потушить 10–15 мин"],
+    bju:"~350 ккал · Б 30 · Ж 14 · У 22"},
+  "gorbusha-zapechen": {name:"Запечённая горбуша с овощами", time:"35 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"горбуша 600 г, овощная смесь 500 г, масло 15 г, лимон",
+    steps:["Рыбу посолить, сбрызнуть лимоном","Овощи на противень","Рыбу сверху","190 °C 20–25 мин"],
+    bju:"~330 ккал · Б 30 · Ж 16 · У 18"},
+  "ris-kuritsa": {name:"Рис с курицей и овощами", time:"35 мин", for:"Обед · 3–4 порции",
+    ing:"рис 270 г сух., курица 670 г, морковь 130 г, лук 130 г, овощи 130 г, масло 20 г",
+    steps:["Рис отварить","Курицу обжарить 8–10 мин","Овощи тушить 5 мин","Смешать"],
+    bju:"~450 ккал · Б 30 · Ж 14 · У 50"},
+  "kotlety-rybnye": {name:"Рыбные котлеты на пару + овощи", time:"35 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"рыба 800 г, яйцо 1 шт., лук 65 г, овощи 670 г, масло 13 г",
+    steps:["Рыбу измельчить, смешать с яйцом, луком","Котлеты на пару 20–25 мин","Овощи потушить"],
+    bju:"~320 ккал · Б 30 · Ж 12 · У 20"},
+  "grechka-svinina": {name:"Гречка со свининой и овощами", time:"60 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"гречка 200 г сух., свинина 600 г, морковь 150 г, лук 100 г, масло 15 г",
+    steps:["Свинину нарезать, обжарить 7 мин","Лук+морковь — 5 мин","200 мл воды, тушить 30–35 мин","Гречку отварить, смешать"],
+    bju:"~460 ккал · Б 30 · Ж 20 · У 42"},
+  "grechka-indeyka": {name:"Гречка с индейкой и овощами", time:"40 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"гречка 200 г сух., индейка 500 г, морковь 100 г, лук 100 г, масло 15 г",
+    steps:["Гречку отварить","Индейку обжарить 7–8 мин","Лук+морковь — 7 мин","Смешать"],
+    bju:"~430 ккал · Б 33 · Ж 12 · У 46"},
+  "omlet-ryba": {name:"Омлет с овощами и рыбой", time:"20 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"яйца 8 шт., рыба 530 г (готовая), овощи 670 г, масло 13 г",
+    steps:["Овощи потушить 10 мин","Яйца взбить, залить овощи","Под крышкой 5–7 мин","Рыбу сверху"],
+    bju:"~320 ккал · Б 28 · Ж 16 · У 16"},
+  "losos-ris": {name:"Лосось с рисом и овощами", time:"35 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"лосось 600 г, рис 150 г сух., овощи 400 г, масло 10 г, лимон",
+    steps:["Рис отварить","Лосось посолить, запечь 190 °C 18–20 мин","Овощи потушить 10 мин"],
+    bju:"~450 ккал · Б 32 · Ж 20 · У 35"},
+  "krevetki-pasta": {name:"Креветки с пастой и шпинатом", time:"25 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"креветки 800 г, макароны 270 г сух., помидоры 400 г, шпинат 400 г, масло 20 г, чеснок",
+    steps:["Макароны отварить","Креветки обжарить 3–4 мин","Добавить помидоры и шпинат, тушить 5 мин","Смешать с пастой"],
+    bju:"~430 ккал · Б 32 · Ж 12 · У 45"},
+  "tvorozh-muss-orehi": {name:"Творожный мусс с орехами", time:"5 мин", for:"Десерт · 2 порции",
+    ing:"творог 200 г, банан 100 г, орехи 20 г, какао 3 г, сахзам",
+    steps:["Взбить творог с бананом и какао","Добавить орехи"],
+    bju:"~180 ккал · Б 12 · Ж 7 · У 18"},
+  "kuritsa-bulgur": {name:"Курица с булгуром и овощами", time:"40 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"булгур 200 г сух., курица 700 г, морковь 150 г, лук 100 г, овощи 200 г",
+    steps:["Булгур залить кипятком, варить 12–15 мин","Курицу обжарить 7–8 мин","Овощи тушить 5–7 мин","Смешать"],
+    bju:"~470 ккал · Б 34 · Ж 14 · У 48"},
+  "treska-kartofel": {name:"Треска с картофелем и овощами", time:"40 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"треска 700 г, картофель 600 г, овощи 400 г, масло 15 г, лимон",
+    steps:["Картофель отварить или запечь","Рыбу запечь 190 °C 20 мин","Овощи потушить"],
+    bju:"~400 ккал · Б 30 · Ж 12 · У 38"},
+  "omlet-krevetki": {name:"Омлет с креветками, шпинатом и фетой", time:"20 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"яйца 8 шт., креветки 530 г, шпинат 400 г, помидоры 400 г, фета 200 г, масло 13 г",
+    steps:["Креветки обжарить 3 мин","Добавить шпинат и помидоры, тушить 5 мин","Залить взбитыми яйцами, посыпать фетой","Под крышкой 5–7 мин"],
+    bju:"~390 ккал · Б 30 · Ж 22 · У 12"},
+  "kuskus-indeyka": {name:"Кускус с индейкой и овощами", time:"25 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"кускус 180 г сух., индейка 600 г, морковь 150 г, лук 100 г, овощи 200 г",
+    steps:["Кускус залить 300 мл кипятка, накрыть 5–7 мин","Индейку обжарить 7–8 мин","Овощи тушить 5–7 мин","Смешать"],
+    bju:"~430 ккал · Б 33 · Ж 12 · У 46"},
+  "kuritsa-rukav": {name:"Курица в рукаве с картофелем", time:"55 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"куриные бёдра 800 г, картофель 800 г, морковь 150 г, лук 100 г, масло 15 г, розмарин, тимьян",
+    steps:["Картофель нарезать дольками","В рукав — картофель, овощи и курица","200 °C 40–45 мин","Дать 5 мин отдохнуть"],
+    bju:"~420 ккал · Б 32 · Ж 18 · У 28"},
+  "polba-indeyka": {name:"Полба с индейкой и овощами гриль", time:"40 мин", for:"Обед Чт–Вс · 4 порции",
+    ing:"полба 240 г сух., индейка 800 г, кабачки 400 г, перец 400 г, помидоры 270 г, масло 20 г",
+    steps:["Полбу варить 25–30 мин","Овощи запечь/обжарить гриль 15–20 мин","Индейку обжарить 7–8 мин","Смешать"],
+    bju:"~450 ккал · Б 34 · Ж 13 · У 48"},
+  "treska-pergament": {name:"Треска на пергаменте с овощами", time:"30 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"треска 930 г, кабачки 400 г, помидоры 400 г, перец 270 г, лимон, масло 20 г",
+    steps:["Овощи на пергамент","Сверху рыба","Завернуть конвертом","190 °C 20–25 мин"],
+    bju:"~330 ккал · Б 32 · Ж 12 · У 16"},
+  "quinoa-kuritsa": {name:"Киноа с курицей и овощами", time:"30 мин", for:"Обед Пн–Ср · 3 порции",
+    ing:"киноа 180 г сух., курица 600 г, морковь 150 г, лук 100 г, овощи 200 г",
+    steps:["Киноа промыть, варить 12–15 мин (1:2)","Курицу обжарить 7–8 мин","Овощи тушить 5–7 мин","Смешать"],
+    bju:"~450 ккал · Б 34 · Ж 13 · У 46"},
+  "govyadina-folga": {name:"Говядина в фольге с корнеплодами", time:"70 мин", for:"Ужин Пн–Ср · 3 порции",
+    ing:"говядина 700 г, свёкла 500 г, батат 600 г, морковь 300 г, лук 100 г, масло 15 г",
+    steps:["Говядину нарезать, в фольгу с луком","180 °C 50–60 мин","Корнеплоды нарезать, запечь 200 °C 35–40 мин"],
+    bju:"~480 ккал · Б 32 · Ж 20 · У 38"},
+  "losos-gril": {name:"Лосось на гриле с овощами", time:"25 мин", for:"Ужин Чт–Вс · 4 порции",
+    ing:"лосось 930 г, кабачки 400 г, перец 400 г, помидоры 270 г, лимон, масло 20 г",
+    steps:["Лосось посолить, сбрызнуть лимоном","Овощи нарезать, сбрызнуть маслом","На гриле рыба 4–5 мин с каждой стороны, овощи 10–15 мин"],
+    bju:"~420 ккал · Б 32 · Ж 22 · У 18"},
+  // ВС
+  "burger": {name:"Бургер + картофель по-деревенски", time:"30 мин", for:"ВС · 1 порция (×N)",
+    ing:"булочка, фарш 120 г, сыр 20 г, помидор 50 г, огурец маринованный 30 г, салат, соус, картофель 200 г, масло 10 г",
+    steps:["Картофель дольками с маслом, 200 °C 25–30 мин","Фарш → котлета, обжарить 4–5 мин с каждой стороны","Булочку подсушить","Собрать: соус → салат → котлета → сыр → помидор → огурец → соус"],
+    bju:"~750 ккал · Б 35 · Ж 30 · У 75"},
+  "shaurma": {name:"Шаурма с курицей", time:"25 мин", for:"ВС · 1 порция (×N)",
+    ing:"лаваш, курица 150 г, капуста 80 г, морковь по-корейски 50 г, огурец 50 г, помидор 50 г, соус 30 г, масло 5 г",
+    steps:["Курицу нарезать, обжарить 7–8 мин","Овощи нашинковать","Лаваш смазать соусом, выложить начинку, свернуть конвертом","Обжарить по 1–2 мин с каждой стороны"],
+    bju:"~600 ккал · Б 40 · Ж 18 · У 65"},
+  "pitstsa": {name:"Пицца на тонком тесте", time:"40 мин", for:"ВС · 1 порция (×N)",
+    ing:"тонкое тесто, курица 100 г, моцарелла 60 г, томатный соус 40 г, помидор 50 г, перец 40 г, оливки 20 г",
+    steps:["Курицу обжарить 5 мин","Тесто на противень, смазать соусом","Выложить курицу, овощи, сыр","220 °C 10–12 мин"],
+    bju:"~700 ккал · Б 40 · Ж 28 · У 70"},
+  "bliny": {name:"Блины с творогом и ягодами", time:"30 мин", for:"ВС · 1 порция (×N)",
+    ing:"мука 60 г, яйцо 1 шт., молоко 150 мл, творог 100 г, ягоды 80 г, масло 5 г",
+    steps:["Взбить яйцо с молоком, всыпать муку","Жарить тонкие блины","Начинить творогом","Сверху ягоды"],
+    bju:"~550 ккал · Б 28 · Ж 15 · У 70"},
+  "kesadilya": {name:"Кесадилья с курицей", time:"20 мин", for:"ВС · 1 порция (×N)",
+    ing:"тортилья, курица 120 г, сыр 50 г, перец 50 г, лук 30 г, соус 30 г, масло 5 г",
+    steps:["Курицу с овощами обжарить 7 мин","На половину тортильи — начинку и сыр, накрыть","Обжарить по 2–3 мин с каждой стороны","Разрезать на треугольники"],
+    bju:"~600 ккал · Б 38 · Ж 22 · У 55"},
+  "hotdog": {name:"Хот-дог с индейкой + картофель", time:"25 мин", for:"ВС · 1 порция (×N)",
+    ing:"булочка для хот-дога, сосиска 80 г, сыр 15 г, огурец маринованный 30 г, горчица/кетчуп 15 г, картофель 200 г, масло 10 г",
+    steps:["Картофель запечь 200 °C 25–30 мин","Сосиску отварить/обжарить","Булочку подсушить","Собрать: сосиска → сыр → огурец → соус"],
+    bju:"~650 ккал · Б 25 · Ж 28 · У 70"},
+  "naggetsy": {name:"Наггетсы + картофельное пюре", time:"35 мин", for:"ВС · 1 порция (×N)",
+    ing:"курица 150 г, яйцо 1 шт., панировка 30 г, картофель 200 г, молоко 50 мл, масло сливочное 10 г",
+    steps:["Курицу кусочками, в яйцо → панировка","200 °C 15–20 мин (или на сковороде)","Картофель отварить, пюре с молоком и маслом","Подавать с соусом"],
+    bju:"~700 ккал · Б 38 · Ж 25 · У 70"}
+};
+
+// Привязка рецептов к меню
+const menuRecipes = {
+  1:["grechka-kuritsa","kuriny-sup","ris-farsh","ryba-zapechen","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss","frukt-salad"],
+  2:["bulgur-indeyka","kuritsa-zapechen","grechka-govyadina","ryba-zapechen","ovsyanka-kefir","pp-zefir","tvorozh-zhele","yabloko-tvorog","frukt-salad"],
+  3:["plov","sup-frikadelki","grechka-mintay","kapusta-kuritsa","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorog-banan","frukt-salad"],
+  4:["ris-indeyka","ryba-zapechen","bulgur-govyadina","kotlety-kurinye","ovsyanka-kefir","pp-zefir","tvorozh-zhele","yabloko-tvorog","frukt-salad"],
+  5:["grechka-kuritsa","gorbusha-zapechen","ris-kuritsa","kotlety-rybnye","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss","frukt-salad"],
+  6:["grechka-svinina","kuriny-sup","ris-kuritsa","ryba-zapechen","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss","frukt-salad"],
+  7:["grechka-indeyka","ryba-zapechen","ris-indeyka","omlet-ryba","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss","frukt-salad"],
+  8:["grechka-govyadina","losos-ris","ris-indeyka","krevetki-pasta","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss-orehi","frukt-salad"],
+  9:["kuritsa-bulgur","treska-kartofel","grechka-govyadina","omlet-krevetki","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss-orehi","frukt-salad"],
+  10:["kuskus-indeyka","kuritsa-rukav","polba-indeyka","treska-pergament","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss-orehi","frukt-salad"],
+  11:["quinoa-kuritsa","govyadina-folga","ris-kuritsa","losos-gril","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss-orehi","frukt-salad"]
+};
+const vsRecipes = {
+  1:"burger",2:"shaurma",3:"pitstsa",4:"bliny",5:"kesadilya",6:"hotdog",7:"naggetsy"
+};
+
+// ==================== УТИЛИТЫ ====================
 function getCanonical(name) {
   const n = name.toLowerCase();
   if (n.includes("морковь по-корейски")||n.includes("морковь по корейски"))return"korean_carrot";
@@ -490,11 +778,12 @@ function shelfCls(d){return d<7?'shelf-vshort':d<15?'shelf-short':d<30?'shelf-me
 function rnd(q){return q>=10?Math.round(q):q>=1?Math.round(q*10)/10:Math.round(q*100)/100;}
 
 // ==================== STATE ====================
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0};
 let state=loadState();
 let currentProducts={};
-function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v1'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
-function saveState(){try{localStorage.setItem('calc_pwa_v1',JSON.stringify(state));}catch(e){}}
+let activeTab='shop';
+function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v2'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
+function saveState(){try{localStorage.setItem('calc_pwa_v2',JSON.stringify(state));}catch(e){}}
 let toastTimer;
 function showToast(txt,cls){
   const el=document.getElementById('toast');
@@ -503,7 +792,20 @@ function showToast(txt,cls){
   toastTimer=setTimeout(()=>el.classList.remove('show'),1600);
 }
 
-// ==================== UI ====================
+// ==================== TABS ====================
+function switchTab(name){
+  activeTab=name;
+  document.querySelectorAll('.tab-content').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.getElementById('stickyTotal').classList.toggle('show',name==='shop');
+  if(name==='recipes')renderRecipes();
+  if(name==='diary')renderChecks();
+  if(name==='settings')updateReminderText();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ==================== UI ЗАКУПКИ ====================
 function initUI(){
   const mBox=document.getElementById('menuChecks');mBox.innerHTML='';
   for(let id=1;id<=11;id++){
@@ -521,6 +823,8 @@ function initUI(){
   document.getElementById('weeksInput').value=state.weeks;
   document.querySelectorAll('.menu-cb').forEach(cb=>cb.checked=state.menus.includes(+cb.value));
   document.querySelectorAll('.vs-cb').forEach(cb=>cb.checked=state.vs.includes(+cb.value));
+  document.getElementById('reminderDay').value=state.reminderDay;
+  document.getElementById('checkDate').value=new Date().toISOString().slice(0,10);
   refreshChecks();
 }
 function refreshChecks(){
@@ -567,17 +871,20 @@ function updateTotals(){
   document.getElementById('stickySum').textContent=fmtP(L+W);
   const el=document.getElementById('grandTotal');
   if(el)el.innerHTML=`<b>💰 Итого:</b> ${fmtP(L+W)} (разово ${fmtP(L)} + еженед. ${fmtP(W)})`;
+  updateWarning();
+  updateCompare();
 }
 function updateWarning(){
   const n=Object.keys(state.overrides).length+Object.keys(state.prices).length;
-  document.getElementById('overrideWarning').style.display=n>0?'flex':'none';
+  const w=document.getElementById('overrideWarning');
+  if(!w)return;
+  w.style.display=n>0?'flex':'none';
   document.getElementById('overrideCount').textContent=n;
 }
-
 function build(){
   if(!state.menus.length&&!state.vs.length){
     document.getElementById('result').innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
-    updateTotals();updateWarning();return;
+    updateTotals();return;
   }
   const products={};
   function add(name,qty,unit,price,src){
@@ -620,16 +927,12 @@ function build(){
 
   html+=`<div class="block-title block-once">📦 Один раз на ${state.weeks} нед.</div>`;
   cats.forEach(cat=>{
-    const items=long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
-    items.forEach(p=>{html+=renderProd(p,false);});
+    long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,false);});
   });
-
   html+=`<div class="block-title block-weekly">🔄 Каждую неделю × ${state.weeks}</div>`;
   cats.forEach(cat=>{
-    const items=weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
-    items.forEach(p=>{html+=renderProd(p,true);});
+    weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,true);});
   });
-
   if(state.weeks>1){
     html+='<div class="block-title" style="background:#f3e5f5;color:#6a1b9a;border-left:4px solid #8e24aa;">📅 План</div>';
     for(let w=1;w<=state.weeks;w++){
@@ -639,9 +942,8 @@ function build(){
     }
   }
   html+=`<div class="tip" id="grandTotal"><b>💰 Итого:</b> считаем…</div>`;
-  html+=`<p class="hint">💡 Количество и цену можно редактировать. Правки — жёлтый фон. Значок * = закрытая упаковка/заморозка.</p>`;
   document.getElementById('result').innerHTML=html;
-  updateTotals();updateWarning();
+  updateTotals();
 }
 function renderProd(p,weekly){
   const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
@@ -658,7 +960,225 @@ function renderProd(p,weekly){
   return h;
 }
 
-// ==================== SHARE + COPY ====================
+// ==================== РЕЦЕПТЫ ====================
+function renderRecipes(){
+  const list=document.getElementById('recipesList');
+  if(!state.menus.length&&!state.vs.length){
+    list.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
+    return;
+  }
+  let html='';
+  state.menus.forEach(id=>{
+    const rIds=menuRecipes[id]||[];
+    if(!rIds.length)return;
+    html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${menus[id].name}</div>`;
+    rIds.forEach(rid=>{
+      const r=R[rid];if(!r)return;
+      html+=renderRecipe(r);
+    });
+    html+='</div>';
+  });
+  if(state.vs.length){
+    html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">🍔 Блюдо на ВС</div>`;
+    state.vs.forEach(id=>{
+      const rid=vsRecipes[id];
+      const r=R[rid];if(!r)return;
+      html+=renderRecipe(r);
+    });
+    html+='</div>';
+  }
+  list.innerHTML=html;
+}
+function renderRecipe(r){
+  const stepsHtml=r.steps.map(s=>`<li>${s}</li>`).join('');
+  return `<div class="recipe" onclick="toggleRecipe(this)">
+    <div class="recipe-head">
+      <div>
+        <h4>${r.name}</h4>
+        <div class="recipe-for">${r.for} · <span class="recipe-time">⏱ ${r.time}</span></div>
+      </div>
+      <span class="recipe-toggle">▼</span>
+    </div>
+    <div class="recipe-body">
+      <div class="recipe-section"><b>Ингредиенты</b><p>${r.ing}</p></div>
+      <div class="recipe-section"><b>Приготовление</b><ol>${stepsHtml}</ol></div>
+      <div class="recipe-bju">${r.bju}</div>
+    </div>
+  </div>`;
+}
+function toggleRecipe(el){
+  el.classList.toggle('open');
+}
+
+// ==================== ДНЕВНИК ====================
+function addCheck(){
+  const date=document.getElementById('checkDate').value;
+  const sum=parseFloat(document.getElementById('checkSum').value);
+  const note=document.getElementById('checkNote').value.trim();
+  if(!date||isNaN(sum)||sum<=0){showToast('Введите дату и сумму','error');return;}
+  state.checks.push({id:Date.now(),date,sum,note});
+  saveState();
+  document.getElementById('checkSum').value='';
+  document.getElementById('checkNote').value='';
+  renderChecks();
+  showToast('✅ Записано');
+}
+function removeCheck(id){
+  if(!confirm('Удалить запись?'))return;
+  state.checks=state.checks.filter(c=>c.id!==id);
+  saveState();renderChecks();
+}
+function renderChecks(){
+  const list=document.getElementById('checksList');
+  const totalEl=document.getElementById('checksTotal');
+  if(!state.checks.length){
+    list.innerHTML='<p class="hint">Пока нет записей.</p>';
+    totalEl.innerHTML='';
+    updateCompare();
+    return;
+  }
+  const sorted=[...state.checks].sort((a,b)=>b.date.localeCompare(a.date));
+  let total=0;
+  list.innerHTML=sorted.map(c=>{
+    total+=c.sum;
+    const d=new Date(c.date);
+    const dd=d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});
+    return `<div class="check-item">
+      <div class="info">
+        <div class="date">${dd}</div>
+        <div class="sum">${fmtP(c.sum)}</div>
+        ${c.note?`<div class="note">${c.note}</div>`:''}
+      </div>
+      <button class="small danger" onclick="removeCheck(${c.id})">✕</button>
+    </div>`;
+  }).join('');
+  totalEl.innerHTML=`<div class="check-total"><span>Всего потрачено:</span><b>${fmtP(total)}</b></div>`;
+  updateCompare();
+}
+function updateCompare(){
+  const block=document.getElementById('compareBlock');
+  if(!block)return;
+  let plan=0;
+  Object.values(currentProducts).forEach(p=>plan+=p.sum);
+  let fact=state.checks.reduce((s,c)=>s+c.sum,0);
+  if(!state.checks.length&&plan===0){block.innerHTML='';return;}
+  const diff=fact-plan;
+  const cls=diff>0?'diff-pos':diff<0?'diff-neg':'';
+  block.innerHTML=`<div class="compare">
+    <div class="compare-cell"><span>План</span><b>${fmtP(plan)}</b></div>
+    <div class="compare-cell"><span>Факт</span><b>${fmtP(fact)}</b></div>
+    <div class="compare-cell ${cls}"><span>Разница</span><b>${diff>=0?'+':''}${Math.round(diff)} ₽</b></div>
+  </div>`;
+}
+
+// ==================== НАПОМИНАНИЕ ====================
+function saveReminderDay(){
+  state.reminderDay=+document.getElementById('reminderDay').value;
+  saveState();
+  updateReminderText();
+  showToast('Сохранено');
+}
+function updateReminderText(){
+  const el=document.getElementById('nextReminderText');
+  if(!el)return;
+  const day=state.reminderDay;
+  const today=new Date();
+  let diff=(day-today.getDay()+7)%7;
+  if(diff===0)diff=7;
+  const next=new Date(today);next.setDate(today.getDate()+diff);
+  const dayNames=['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+  const dateStr=next.toLocaleDateString('ru-RU',{day:'2-digit',month:'long'});
+  el.textContent=`Следующая закупка: ${dayNames[day].toLowerCase()}, ${dateStr} (через ${diff} дн.)`;
+}
+function downloadICS(){
+  const day=state.reminderDay;
+  const dayCodes=['SU','MO','TU','WE','TH','FR','SA'];
+  const today=new Date();
+  let diff=(day-today.getDay()+7)%7;
+  if(diff===0)diff=7;
+  const next=new Date(today);next.setDate(today.getDate()+diff);
+  const dtStart=`${next.getFullYear()}${String(next.getMonth()+1).padStart(2,'0')}${String(next.getDate()).padStart(2,'0')}T100000`;
+  const dtStamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const ics=`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Zakupka//RU
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:zakupka-weekly@zakupka
+DTSTAMP:${dtStamp}
+DTSTART:${dtStart}
+RRULE:FREQ=WEEKLY;BYDAY=${dayCodes[day]}
+SUMMARY:🛒 Закупка продуктов
+DESCRIPTION:Откройте приложение "Закупка" для списка покупок
+BEGIN:VALARM
+TRIGGER:-PT12H
+ACTION:DISPLAY
+DESCRIPTION:Закупка завтра
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+  const blob=new Blob([ics],{type:'text/calendar'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='zakupka-napominanie.ics';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+  showToast('📅 Файл скачан');
+}
+async function requestNotifications(){
+  if(!('Notification' in window)){showToast('Уведомления не поддерживаются','error');return;}
+  const perm=await Notification.requestPermission();
+  if(perm==='granted'){
+    showToast('✅ Уведомления разрешены');
+    new Notification('Закупка',{body:'Уведомления включены. Напомним за день до закупки, если приложение открыто.',icon:'icon.svg'});
+  } else {
+    showToast('Уведомления отклонены','error');
+  }
+}
+
+// ==================== ЭКСПОРТ / ИМПОРТ ====================
+function exportData(){
+  const data={state,exportedAt:new Date().toISOString(),version:'v2'};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`zakupka-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+  showToast('📤 Файл скачан');
+}
+function importData(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(data.state&&typeof data.state==='object'){
+          state={...DEFAULT_STATE,...data.state};
+          saveState();
+          initUI();build();
+          showToast('✅ Импорт успешен');
+        } else throw new Error('Нет поля state');
+      } catch(err){showToast('Ошибка импорта: '+err.message,'error');}
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
+function resetAllData(){
+  if(!confirm('Удалить ВСЕ данные: настройки, чеки, напоминание? Это необратимо.'))return;
+  if(!confirm('Точно удалить? Сохраните резервную копию через «Экспорт».'))return;
+  state={...DEFAULT_STATE,menus:[1],vs:[],overrides:{},prices:{},checks:[]};
+  saveState();
+  initUI();build();
+  showToast('🗑 Всё сброшено');
+}
+
+// ==================== КОПИРОВАНИЕ / SHARE ====================
 function buildListText(){
   const weeks=state.weeks,people=state.people;
   const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
@@ -713,43 +1233,35 @@ async function shareList(){
   if(!Object.keys(currentProducts).length){showToast('Выберите меню','error');return;}
   const text=buildListText();
   if(navigator.share){
-    try{
-      await navigator.share({title:'Закупка на неделю',text:text});
-    }catch(e){
-      if(e.name!=='AbortError')copyText(text);
-    }
-  } else {
-    copyText(text);
-    showToast('Скопировано (share недоступен)','copied');
-  }
+    try{await navigator.share({title:'Закупка на неделю',text:text});}
+    catch(e){if(e.name!=='AbortError')copyText(text);}
+  } else {copyText(text);showToast('Скопировано','copied');}
 }
 
 // ==================== PWA ====================
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',(e)=>{
-  e.preventDefault();
-  deferredPrompt=e;
+  e.preventDefault();deferredPrompt=e;
   document.getElementById('installBtn').style.display='block';
 });
 async function installApp(){
   if(!deferredPrompt)return;
   deferredPrompt.prompt();
-  const r=await deferredPrompt.userChoice;
+  await deferredPrompt.userChoice;
   deferredPrompt=null;
   document.getElementById('installBtn').style.display='none';
 }
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 }
-if(navigator.storage&&navigator.storage.persist){
-  navigator.storage.persist().catch(()=>{});
-}
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
 
 // ==================== START ====================
 initUI();
 build();
+renderChecks();
+updateReminderText();
+switchTab('shop');
 </script>
 </body>
 </html>
