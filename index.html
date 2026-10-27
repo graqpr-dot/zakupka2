@@ -229,6 +229,21 @@
   .toast.error { background: #c62828; }
   .toast.copied { background: #1976d2; }
 
+  .cm-header { background:#fff; border-radius:10px; padding:10px 12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+  .cm-slot { display:grid; grid-template-columns:100px 1fr; gap:8px; padding:8px 0; border-bottom:1px solid #f0f0f0; align-items:start; }
+  .cm-slot:last-child { border-bottom:none; }
+  .cm-slot-label { font-size:12px; font-weight:700; color:#444; padding-top:8px; }
+  .cm-slot-controls { display:flex; flex-direction:column; gap:4px; }
+  .cm-slot-controls select, .cm-slot-controls input[type="text"] { width:100%; padding:8px 10px; font-size:14px; }
+  .cm-days { display:flex; align-items:center; gap:6px; font-size:12px; }
+  .cm-days input { width:60px; padding:6px 8px; font-size:14px; text-align:center; }
+  .cm-info { font-size:11px; color:#888; }
+  @media (max-width: 400px) {
+    .cm-slot { grid-template-columns:80px 1fr; gap:6px; }
+    .cm-slot-label { font-size:11px; padding-top:6px; }
+    .cm-slot-controls select, .cm-slot-controls input[type="text"] { font-size:13px; padding:7px 8px; }
+  }
+
   @media (max-width: 400px) {
     body { font-size: 14px; }
     .wrap { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
@@ -848,13 +863,99 @@ function formatIngredients(parsed, coefficient) {
   }).join(', ');
 }
 
-function getBasePortions(recipe) {
-  const m = recipe.for.match(/(\d+)\s+порц/);
-  return m ? parseInt(m[1]) : 1;
+function pluralPeople(n) {
+  if (n === 1) return 'человек';
+  if (n >= 2 && n <= 4) return 'человека';
+  return 'человек';
+}
+// ============ СВОЁ МЕНЮ: константы ============
+const UNIT_PRICES = {
+  chicken:400,turkey:500,beef:650,pork:500,mince:450,fish_white:350,fish_red:1000,shrimp:800,sausage:500,
+  eggs:8,cottage:450,yogurt:470,kefir:100,feta:650,cheese:600,mozzarella:700,milk:80,butter:800,
+  buckwheat:150,rice:150,oats:175,pasta:300,bulgur:200,couscous:300,quinoa:600,spelt:325,flour:70,breading:150,
+  potato:100,cabbage:60,carrot:83,korean_carrot:300,onion:83,tomato:200,cucumber:180,pickled_cucumber:300,
+  lettuce:300,zucchini:150,pepper:300,spinach:300,beet:100,sweet_potato:200,veg_mix:200,
+  apple:100,banana:100,berries:400,lemon:30,nuts:1000,bread:45,bun_burger:30,bun_hotdog:25,lavash:100,tortilla:100,dough:200,
+  oil_spices:150,olive_oil:1200,oil:150,spices:100,gelatin:120,chocolate:2.5,tomato_paste:2,sauce:300,tomato_sauce:200,olives:400,mustard_ketchup:300
+};
+
+const RECIPE_CATS = {
+  breakfast:['ovsyanka-kefir','tvorog-banan'],
+  dessert:['yabloko-tvorog','pp-zhele','tvorozh-muss','frukt-salad','pp-zefir','tvorozh-zhele','tvorozh-muss-orehi'],
+  fastfood:['burger','shaurma','pitstsa','bliny','kesadilya','hotdog','naggetsy']
+};
+
+const SLOT_NAMES = {breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',sweet:'Сладкое'};
+const SLOT_ICONS = {breakfast:'🌅',lunch:'🍽',dinner:'🌙',sweet:'🍰'};
+
+function getMainRecipeIds(){
+  const exclude=new Set([...RECIPE_CATS.breakfast,...RECIPE_CATS.dessert,...RECIPE_CATS.fastfood]);
+  return Object.keys(R).filter(rid=>!exclude.has(rid));
 }
 
-function getRecipeIngredients(recipe, people) {
-  // Если это рецепт ВС — берём структурированные ингредиенты из vsData
+function getBasePortions(recipe){
+  const m=String(recipe.for).match(/(\d+)\s+порци/);
+  return m?parseInt(m[1]):1;
+}
+
+function convertToUnit(qty,fromUnit,toUnit){
+  if(fromUnit===toUnit)return qty;
+  if(fromUnit==='г'&&toUnit==='кг')return qty/1000;
+  if(fromUnit==='кг'&&toUnit==='г')return qty*1000;
+  if(fromUnit==='мл'&&toUnit==='л')return qty/1000;
+  if(fromUnit==='л'&&toUnit==='мл')return qty*1000;
+  return qty;
+}
+
+function addCustomProduct(products,name,qty,unit,price,src){
+  const key=getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
+  if(!products[key]){
+    const info=productInfo[key]||{name,unit,cat:'Прочее',perishable:false};
+    const sh=SHELF[key]||['—',0];
+    products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set()};
+  }
+  let f=qty;
+  if(products[key].unit==='кг'&&unit==='г')f=qty/1000;
+  if(products[key].unit==='г'&&unit==='кг')f=qty*1000;
+  if(products[key].unit==='л'&&unit==='мл')f=qty/1000;
+  if(products[key].unit==='мл'&&unit==='л')f=qty*1000;
+  products[key].calcQ+=f;
+  products[key].calcSum+=price;
+  products[key].src.add(src);
+}
+
+function scaleIngredientsForEntry(recipe,people,days){
+  const base=getBasePortions(recipe);
+  const factor=people*(days/base);
+  for(const vsId in vsRecipes){
+    if(vsRecipes[vsId]===recipe._id){
+      const vs=vsData[vsId];
+      if(vs)return vs.items.map(([name,qty,unit])=>{
+        const scaled=qty*factor;
+        return `${name} ${formatNum(roundQty(scaled,unit))} ${unit}`;
+      }).join(', ');
+    }
+  }
+  const parsed=parseIngredients(recipe.ing);
+  return parsed.map(item=>{
+    if(item.qty===null||item.qty===undefined)return item.raw;
+    const scaled=item.qty*factor;
+    const suffix=item.suffix?' '+item.suffix:'';
+    return `${item.name} ${formatNum(roundQty(scaled,item.unit))} ${item.unit}${suffix}`;
+  }).join(', ');
+}
+
+function getEntryFactor(recipe,people,days){
+  return people*(days/getBasePortions(recipe));
+}
+
+function hasCustomEntries(){
+  if(!state.customMenu||!state.customMenu.entries)return false;
+  return Object.values(state.customMenu.entries).some(e=>e&&e.recipeId&&e.recipeId!=='__free__');
+}
+
+function scaleIngredients(recipe, people) {
+  // Рецепт ВС — берём структурированные ингредиенты
   for (const vsId in vsRecipes) {
     if (vsRecipes[vsId] === recipe._id) {
       const vs = vsData[vsId];
@@ -867,23 +968,19 @@ function getRecipeIngredients(recipe, people) {
       }
     }
   }
-  // Иначе — парсим строку и масштабируем
-  const base = getBasePortions(recipe);
-  const coefficient = people / base;
-  if (Math.abs(coefficient - 1) < 0.01) return recipe.ing;
-  return formatIngredients(parseIngredients(recipe.ing), coefficient);
-}
-
-function formatRecipeFor(recipe, people) {
-  const base = getBasePortions(recipe);
-  if (base === people) return recipe.for;
-  let result = recipe.for.replace(/(\d+)\s+порци[йяе]/g, `на ${people} чел.`);
-  result += ` <span style="color:#888;font-size:10.5px;">(база ${base})</span>`;
-  return result;
+  // Обычный рецепт — умножаем каждый ингредиент на число людей
+  const parsed = parseIngredients(recipe.ing);
+  return parsed.map(item => {
+    if (item.qty === null || item.qty === undefined) return item.raw;
+    const scaled = item.qty * people;
+    const rounded = roundQty(scaled, item.unit);
+    const suffix = item.suffix ? ' ' + item.suffix : '';
+    return `${item.name} ${formatNum(rounded)} ${item.unit}${suffix}`;
+  }).join(', ');
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}}};
 let state=loadState();
 let currentProducts={};
 function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
@@ -972,6 +1069,10 @@ function updateWarning(){
   document.getElementById('overrideCount').textContent=n;
 }
 function build(){
+  if(state.menuMode==='custom'){
+    buildFromCustom();
+    return;
+  }
   if(!state.menus.length&&!state.vs.length){
     document.getElementById('result').innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
     updateTotals();return;
@@ -1034,6 +1135,73 @@ function build(){
   document.getElementById('result').innerHTML=html;
   updateTotals();
 }
+function buildFromCustom(){
+  const result=document.getElementById('result');
+  if(!state.customMenu||!state.customMenu.active){
+    result.innerHTML='<div class="card-block"><b>Своё меню выключено.</b><br>Зайдите на вкладку «Меню» → «Своё» и нажмите «Использовать в закупке».</div>';
+    currentProducts={};updateTotals();return;
+  }
+  if(!hasCustomEntries()){
+    result.innerHTML='<div class="card-block"><b>Своё меню пустое.</b><br>Добавьте блюда на вкладке «Меню» → «Своё».</div>';
+    currentProducts={};updateTotals();return;
+  }
+  const products={};
+  const entries=state.customMenu.entries;
+  for(const slotKey in entries){
+    const entry=entries[slotKey];
+    if(!entry||!entry.recipeId||entry.recipeId==='__free__')continue;
+    const recipe=R[entry.recipeId];
+    if(!recipe)continue;
+    const days=entry.days||1;
+    const base=getBasePortions(recipe);
+    const factor=getEntryFactor(recipe,state.people,days);
+    let vsItems=null;
+    for(const vsId in vsRecipes){if(vsRecipes[vsId]===entry.recipeId){vsItems=vsData[vsId].items;break;}}
+    if(vsItems){
+      vsItems.forEach(([name,qty,unit,price])=>{
+        addCustomProduct(products,name,qty*factor,unit,price*factor,'СМ');
+      });
+    } else {
+      const parsed=parseIngredients(recipe.ing);
+      parsed.forEach(item=>{
+        if(item.qty===null||item.qty===undefined)return;
+        const key=getCanonical(item.name);
+        if(!key)return;
+        const info=productInfo[key];
+        if(!info)return;
+        const scaledQty=item.qty*factor;
+        const unitPrice=UNIT_PRICES[key]||0;
+        const qtyInUnit=convertToUnit(scaledQty,item.unit,info.unit);
+        const price=unitPrice*qtyInUnit;
+        addCustomProduct(products,item.name,scaledQty,item.unit,price,'СМ');
+      });
+    }
+  }
+  Object.values(products).forEach(p=>{
+    p.calcUP=p.calcQ>0?p.calcSum/p.calcQ:0;
+    const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
+    p.q=qo?state.overrides[p.key]:p.calcQ;
+    p.up=po?state.prices[p.key]:p.calcUP;
+    p.sum=p.up*p.q;
+  });
+  currentProducts=products;
+  const cats=['Мясо / рыба','Молочные / яйца','Крупы','Овощи','Фрукты / ягоды','Прочее'];
+  const long=[],weekly=[];
+  Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
+  let html='<div class="summary">';
+  html+=`<div class="sum-card"><span>Меню</span><b>✏️ Своё</b></div>`;
+  html+=`<div class="sum-card"><span>Чел.</span><b>${state.people}</b></div>`;
+  html+=`<div class="sum-card"><span>Блюд</span><b>${Object.keys(entries).filter(k=>entries[k].recipeId&&entries[k].recipeId!=='__free__').length}</b></div>`;
+  html+=`<div class="sum-card"><span>Нед.</span><b>${state.weeks}</b></div></div>`;
+  html+='<div class="tip" style="margin-bottom:8px;">📌 Закупка по своему меню. Изменить состав — вкладка «Меню» → «Своё».</div>';
+  html+=`<div class="block-title block-once">📦 Один раз на ${state.weeks} нед.</div>`;
+  cats.forEach(cat=>{long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,false);});});
+  html+=`<div class="block-title block-weekly">🔄 Каждую неделю × ${state.weeks}</div>`;
+  cats.forEach(cat=>{weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,true);});});
+  html+=`<div class="tip" id="grandTotal"><b>💰 Итого:</b> считаем…</div>`;
+  result.innerHTML=html;
+  updateTotals();
+}
 function renderProd(p,weekly){
   const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
   let h='<div class="prod">';
@@ -1053,17 +1221,22 @@ function renderProd(p,weekly){
 function renderMenuTab(){
   const tabsBar=document.getElementById('menuTabsBar');
   const sched=document.getElementById('menuSchedule');
+  if(state.menuMode==='custom'){renderCustomMenuUI(tabsBar,sched);}
+  else{renderPresetMenuUI(tabsBar,sched);}
+}
+
+function renderPresetMenuUI(tabsBar,sched){
+  const switchHtml=`<button class="menu-tab-btn" onclick="setMenuMode('preset')" style="background:#e85d04;color:#fff;margin-right:6px;">📋 Готовые</button><button class="menu-tab-btn" onclick="setMenuMode('custom')" style="margin-right:10px;">✏️ Своё</button>`;
   if(!state.menus.length){
-    tabsBar.innerHTML='';
+    tabsBar.innerHTML=switchHtml;
     sched.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
     return;
   }
   if(!state.menus.includes(state.activeMenuView))state.activeMenuView=state.menus[0];
-  tabsBar.innerHTML=state.menus.map(id=>`<button class="menu-tab-btn${state.activeMenuView===id?' active':''}" onclick="setMenuView(${id})">№${id}</button>`).join('');
+  tabsBar.innerHTML=switchHtml+state.menus.map(id=>`<button class="menu-tab-btn${state.activeMenuView===id?' active':''}" onclick="setMenuView(${id})">№${id}</button>`).join('');
   const data=scheduleData[state.activeMenuView];
   if(!data){sched.innerHTML='';return;}
   sched.innerHTML=`<div class="menu-recipe-title">📋 ${menus[state.activeMenuView].name}</div>`+data.map((day,i)=>{
-    const dNum=i+1;
     return `<div class="day-card${i===0?' open':''}" onclick="toggleDay(this)">
       <div class="day-header"><h3>${DAY_NAMES[i]}</h3><span class="toggle">▼</span></div>
       <div class="day-body">
@@ -1071,9 +1244,90 @@ function renderMenuTab(){
         ${renderMeal('lunch','Обед',day.lunch)}
         ${renderMeal('dinner','Ужин',day.dinner)}
         ${renderMeal('sweet','Сладкое',day.sweet)}
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
+}
+
+function renderCustomMenuUI(tabsBar,sched){
+  const switchHtml=`<button class="menu-tab-btn" onclick="setMenuMode('preset')" style="margin-right:6px;">📋 Готовые</button><button class="menu-tab-btn" onclick="setMenuMode('custom')" style="background:#1976d2;color:#fff;">✏️ Своё</button>`;
+  tabsBar.innerHTML=switchHtml;
+  const entries=state.customMenu.entries||{};
+  const active=state.customMenu.active;
+  let html=`<div class="cm-header">
+    <div style="font-size:12px;color:#555;margin-bottom:6px;">Рецепты на <b>${state.people} ${pluralPeople(state.people)}</b>. Для каждого блюда укажите, на сколько дней оно готовится.</div>
+    <button class="small" onclick="toggleCustomActive()" style="background:${active?'#43a047':'#e85d04'};margin-right:4px;">${active?'✅ Используется в закупке':'📥 Использовать в закупке'}</button>
+    <button class="small" onclick="clearCustomMenu()" style="background:#c62828;">🗑 Очистить</button>
+  </div>`;
+  for(let d=0;d<7;d++){
+    html+=`<div class="day-card open" style="border-left-color:#1976d2;">
+      <div class="day-header" style="background:#e3f2fd;" onclick="toggleDay(this.parentElement)">
+        <h3 style="color:#0d47a1;">${DAY_NAMES[d]}</h3><span class="toggle">▼</span>
+      </div>
+      <div class="day-body">`;
+    for(const slot of ['breakfast','lunch','dinner','sweet']){
+      html+=renderCustomSlot(d,slot,entries);
+    }
+    html+=`</div></div>`;
+  }
+  sched.innerHTML=html;
+}
+
+function renderCustomSlot(d,slot,entries){
+  const key=`${d}-${slot}`;
+  const entry=entries[key]||{recipeId:'',days:1,customName:''};
+  const rid=entry.recipeId||'';
+  const recipe=rid&&rid!=='__free__'?R[rid]:null;
+  const base=recipe?getBasePortions(recipe):0;
+  let opts='<option value="">— пусто —</option><option value="__free__"'+(rid==='__free__'?' selected':'')+'>✏️ Свободное блюдо</option>';
+  const groups=[
+    {label:'Завтраки',ids:RECIPE_CATS.breakfast},
+    {label:'Основные',ids:getMainRecipeIds()},
+    {label:'Десерты',ids:RECIPE_CATS.dessert},
+    {label:'Фастфуд',ids:RECIPE_CATS.fastfood}
+  ];
+  groups.forEach(g=>{
+    opts+=`<optgroup label="${g.label}">`+g.ids.map(id=>R[id]?`<option value="${id}"${rid===id?' selected':''}>${R[id].name}</option>`:'').join('')+`</optgroup>`;
+  });
+  let controls=`<select onchange="setCustomCell('${key}','recipeId',this.value)">${opts}</select>`;
+  if(rid==='__free__'){
+    controls+=`<input type="text" placeholder="Название блюда" value="${entry.customName||''}" onchange="setCustomCell('${key}','customName',this.value)" style="margin-top:4px;">`;
+  }
+  if(recipe){
+    const factor=getEntryFactor(recipe,state.people,entry.days||1);
+    controls+=`<div class="cm-days">
+      <span>дней: </span>
+      <input type="number" min="1" max="7" value="${entry.days||1}" onchange="setCustomCell('${key}','days',this.value)">
+      <span class="cm-info">база ${base} дн. · коэф ×${formatNum(Math.round(factor*100)/100)}</span>
+    </div>`;
+  }
+  return `<div class="cm-slot">
+    <div class="cm-slot-label">${SLOT_ICONS[slot]} ${SLOT_NAMES[slot]}</div>
+    <div class="cm-slot-controls">${controls}</div>
+  </div>`;
+}
+
+function setMenuMode(mode){state.menuMode=mode;saveState();renderMenuTab();if(mode==='custom'&&state.customMenu.active)build();}
+
+function toggleCustomActive(){
+  state.customMenu.active=!state.customMenu.active;
+  saveState();renderMenuTab();
+  if(state.menuMode==='custom')build();
+  showToast(state.customMenu.active?'✅ Своё меню в закупке':'Отключено');
+}
+
+function clearCustomMenu(){
+  if(!confirm('Удалить всё содержимое своего меню?'))return;
+  state.customMenu.entries={};
+  saveState();renderMenuTab();
+  if(state.menuMode==='custom')build();
+}
+
+function setCustomCell(key,field,value){
+  if(!state.customMenu.entries[key])state.customMenu.entries[key]={recipeId:'',days:1,customName:''};
+  if(field==='days')value=Math.max(1,Math.min(7,parseInt(value)||1));
+  state.customMenu.entries[key][field]=value;
+  saveState();renderMenuTab();
+  if(state.menuMode==='custom'&&state.customMenu.active)build();
 }
 function renderMeal(cls,label,data){
   if(!data)return '';
@@ -1097,11 +1351,44 @@ function showRecipe(rid){
 // ============ РЕЦЕПТЫ ============
 function renderRecipes(){
   const list=document.getElementById('recipesList');
+  if(state.menuMode==='custom'){
+    if(!state.customMenu.active||!hasCustomEntries()){
+      list.innerHTML='<div class="card-block">Своё меню пустое или отключено. Заполните его на вкладке «Меню» → «Своё».</div>';
+      return;
+    }
+    const entries=state.customMenu.entries;
+    let html=`<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты из своего меню</b> · на ${state.people} ${pluralPeople(state.people)}. Ингредиенты умножены на число людей и на длительность блюда.</div>`;
+    for(let d=0;d<7;d++){
+      let dayHtml='';
+      for(const slot of ['breakfast','lunch','dinner','sweet']){
+        const key=`${d}-${slot}`;
+        const entry=entries[key];
+        if(!entry||!entry.recipeId||entry.recipeId==='__free__')continue;
+        const r=R[entry.recipeId];if(!r)continue;
+        const days=entry.days||1;
+        const base=getBasePortions(r);
+        const factor=getEntryFactor(r,state.people,days);
+        const scaledIng=scaleIngredientsForEntry({...r,_id:entry.recipeId},state.people,days);
+        dayHtml+=`<div class="recipe" onclick="toggleRecipe(this)">
+          <div class="recipe-head"><div><h4>${SLOT_ICONS[slot]} ${r.name}</h4>
+            <div class="recipe-for">${DAY_NAMES[d]} · ${days} дн. · ×${formatNum(Math.round(factor*100)/100)} · <span class="recipe-time">⏱ ${r.time}</span></div></div>
+            <span class="recipe-toggle">▼</span></div>
+          <div class="recipe-body">
+            <div class="recipe-section"><b>Ингредиенты (на ${state.people} ${pluralPeople(state.people)}, ${days} дн.)</b><p>${scaledIng}</p></div>
+            <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>
+            <div class="recipe-bju">${r.bju}</div>
+          </div></div>`;
+      }
+      if(dayHtml)html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">${DAY_NAMES[d]}</div>${dayHtml}</div>`;
+    }
+    list.innerHTML=html;
+    return;
+  }
   if(!state.menus.length&&!state.vs.length){
     list.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
     return;
   }
-  const header = `<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты пересчитаны на ${state.people} ${state.people===1?'человека':'человек'}.</b> Количества ингредиентов адаптированы автоматически. Количества в шагах приготовления указаны для базового рецепта.</div>`;
+  const header=`<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты на ${state.people} ${pluralPeople(state.people)}.</b> Ингредиенты умножены на ${state.people}.</div>`;
   let html=header;
   state.menus.forEach(id=>{
     const rIds=menuRecipes[id]||[];
@@ -1112,10 +1399,7 @@ function renderRecipes(){
   });
   if(state.vs.length){
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">🍔 Блюдо на ВС</div>`;
-    state.vs.forEach(id=>{
-      const rid=vsRecipes[id];
-      if(rid&&R[rid])html+=renderRecipe(rid);
-    });
+    state.vs.forEach(id=>{const rid=vsRecipes[id];if(rid&&R[rid])html+=renderRecipe(rid);});
     html+='</div>';
   }
   list.innerHTML=html;
@@ -1124,19 +1408,20 @@ function renderRecipe(rid){
   const r=R[rid];
   if(!r)return '';
   const rWithId={...r,_id:rid};
-  const base=getBasePortions(rWithId);
-  const coefficient=state.people/base;
-  const scaledIng=getRecipeIngredients(rWithId,state.people);
-  const displayFor=formatRecipeFor(rWithId,state.people);
-  const coefLabel=Math.abs(coefficient-1)>0.01?` <span style="color:#1976d2;font-size:11px;">(×${formatCoef(coefficient)})</span>`:'';
-  const hasStepsWarning=Math.abs(coefficient-1)>0.01;
+  const scaledIng=scaleIngredients(rWithId,state.people);
+  const displayFor=`на ${state.people} ${pluralPeople(state.people)}`;
   return `<div class="recipe" onclick="toggleRecipe(this)">
-    <div class="recipe-head"><div><h4>${r.name}${coefLabel}</h4><div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div></div><span class="recipe-toggle">▼</span></div>
+    <div class="recipe-head">
+      <div>
+        <h4>${r.name}</h4>
+        <div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div>
+      </div>
+      <span class="recipe-toggle">▼</span>
+    </div>
     <div class="recipe-body">
-      <div class="recipe-section"><b>Ингредиенты (на ${state.people} чел.)</b><p>${scaledIng}</p></div>
+      <div class="recipe-section"><b>Ингредиенты</b><p>${scaledIng}</p></div>
       <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>
       <div class="recipe-bju">${r.bju}</div>
-      ${hasStepsWarning?`<p class="hint" style="margin-top:6px;">⚠️ Количества в шагах указаны для базового рецепта на ${base} порц. Основные ингредиенты пересчитаны на ${state.people} чел.</p>`:''}
     </div>
   </div>`;
 }
