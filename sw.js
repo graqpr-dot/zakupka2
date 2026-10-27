@@ -1,4 +1,4 @@
-const CACHE = 'zakupka-v4';
+const CACHE = 'zakupka-v5';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {

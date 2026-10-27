@@ -792,6 +792,95 @@ function fmtQty(q,u){
 function fmtP(p){return Math.round(p).toLocaleString('ru-RU')+' ₽';}
 function shelfCls(d){return d<7?'shelf-vshort':d<15?'shelf-short':d<30?'shelf-medium':d<90?'shelf-long':'shelf-vlong';}
 function rnd(q){return q>=10?Math.round(q):q>=1?Math.round(q*10)/10:Math.round(q*100)/100;}
+// ============ ПЕРЕСЧЁТ ИНГРЕДИЕНТОВ ПО ЛЮДЯМ ============
+function parseIngredients(str) {
+  if (!str) return [];
+  const prepared = str.replace(/(\d),(\d)/g, '$1.$2');
+  const items = prepared.split(/,\s+/);
+  return items.map(item => {
+    const m = item.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(г|кг|мл|л|шт|компл)\.?(?:\s+(.*))?$/);
+    if (m) {
+      return {
+        name: m[1].trim(),
+        qty: parseFloat(m[2]),
+        unit: m[3],
+        suffix: m[4] ? m[4].trim() : '',
+        raw: item
+      };
+    }
+    return { raw: item, name: item, qty: null };
+  });
+}
+
+function roundQty(qty, unit) {
+  if (qty <= 0) return 0;
+  if (unit === 'шт' || unit === 'компл') return Math.max(1, Math.round(qty));
+  if (unit === 'г' || unit === 'мл') {
+    if (qty < 10) return Math.max(5, Math.round(qty));
+    if (qty < 50) return Math.round(qty / 5) * 5;
+    if (qty < 200) return Math.round(qty / 10) * 10;
+    return Math.round(qty / 25) * 25;
+  }
+  if (unit === 'кг' || unit === 'л') {
+    if (qty < 1) return Math.round(qty * 1000) / 1000;
+    return Math.round(qty * 100) / 100;
+  }
+  return Math.round(qty * 10) / 10;
+}
+
+function formatNum(n) {
+  if (Number.isInteger(n)) return n.toString();
+  return n.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
+}
+
+function formatCoef(c) {
+  if (Number.isInteger(c)) return c.toString();
+  return c.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+}
+
+function formatIngredients(parsed, coefficient) {
+  return parsed.map(item => {
+    if (item.qty === null || item.qty === undefined) return item.raw;
+    const scaled = item.qty * coefficient;
+    const rounded = roundQty(scaled, item.unit);
+    const suffix = item.suffix ? ' ' + item.suffix : '';
+    return `${item.name} ${formatNum(rounded)} ${item.unit}${suffix}`;
+  }).join(', ');
+}
+
+function getBasePortions(recipe) {
+  const m = recipe.for.match(/(\d+)\s+порц/);
+  return m ? parseInt(m[1]) : 1;
+}
+
+function getRecipeIngredients(recipe, people) {
+  // Если это рецепт ВС — берём структурированные ингредиенты из vsData
+  for (const vsId in vsRecipes) {
+    if (vsRecipes[vsId] === recipe._id) {
+      const vs = vsData[vsId];
+      if (vs) {
+        return vs.items.map(([name, qty, unit]) => {
+          const scaled = qty * people;
+          const rounded = roundQty(scaled, unit);
+          return `${name} ${formatNum(rounded)} ${unit}`;
+        }).join(', ');
+      }
+    }
+  }
+  // Иначе — парсим строку и масштабируем
+  const base = getBasePortions(recipe);
+  const coefficient = people / base;
+  if (Math.abs(coefficient - 1) < 0.01) return recipe.ing;
+  return formatIngredients(parseIngredients(recipe.ing), coefficient);
+}
+
+function formatRecipeFor(recipe, people) {
+  const base = getBasePortions(recipe);
+  if (base === people) return recipe.for;
+  let result = recipe.for.replace(/(\d+)\s+порци[йяе]/g, `на ${people} чел.`);
+  result += ` <span style="color:#888;font-size:10.5px;">(база ${base})</span>`;
+  return result;
+}
 
 // ============ STATE ============
 const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1};
@@ -1000,7 +1089,7 @@ function showRecipe(rid){
     const all=document.querySelectorAll('#recipesList .recipe');
     all.forEach(el=>{
       const h=el.querySelector('h4');
-      if(h&&h.textContent===r.name){el.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'start'});}
+      if(h&&h.textContent.startsWith(r.name)){el.classList.add('open');el.scrollIntoView({behavior:'smooth',block:'start'});}
     });
   },100);
 }
@@ -1012,28 +1101,42 @@ function renderRecipes(){
     list.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
     return;
   }
-  let html='';
+  const header = `<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты пересчитаны на ${state.people} ${state.people===1?'человека':'человек'}.</b> Количества ингредиентов адаптированы автоматически. Количества в шагах приготовления указаны для базового рецепта.</div>`;
+  let html=header;
   state.menus.forEach(id=>{
     const rIds=menuRecipes[id]||[];
     if(!rIds.length)return;
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${menus[id].name}</div>`;
-    rIds.forEach(rid=>{const r=R[rid];if(r)html+=renderRecipe(r);});
+    rIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid);});
     html+='</div>';
   });
   if(state.vs.length){
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">🍔 Блюдо на ВС</div>`;
-    state.vs.forEach(id=>{const rid=vsRecipes[id];const r=R[rid];if(r)html+=renderRecipe(r);});
+    state.vs.forEach(id=>{
+      const rid=vsRecipes[id];
+      if(rid&&R[rid])html+=renderRecipe(rid);
+    });
     html+='</div>';
   }
   list.innerHTML=html;
 }
-function renderRecipe(r){
+function renderRecipe(rid){
+  const r=R[rid];
+  if(!r)return '';
+  const rWithId={...r,_id:rid};
+  const base=getBasePortions(rWithId);
+  const coefficient=state.people/base;
+  const scaledIng=getRecipeIngredients(rWithId,state.people);
+  const displayFor=formatRecipeFor(rWithId,state.people);
+  const coefLabel=Math.abs(coefficient-1)>0.01?` <span style="color:#1976d2;font-size:11px;">(×${formatCoef(coefficient)})</span>`:'';
+  const hasStepsWarning=Math.abs(coefficient-1)>0.01;
   return `<div class="recipe" onclick="toggleRecipe(this)">
-    <div class="recipe-head"><div><h4>${r.name}</h4><div class="recipe-for">${r.for} · <span class="recipe-time">⏱ ${r.time}</span></div></div><span class="recipe-toggle">▼</span></div>
+    <div class="recipe-head"><div><h4>${r.name}${coefLabel}</h4><div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div></div><span class="recipe-toggle">▼</span></div>
     <div class="recipe-body">
-      <div class="recipe-section"><b>Ингредиенты</b><p>${r.ing}</p></div>
+      <div class="recipe-section"><b>Ингредиенты (на ${state.people} чел.)</b><p>${scaledIng}</p></div>
       <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>
       <div class="recipe-bju">${r.bju}</div>
+      ${hasStepsWarning?`<p class="hint" style="margin-top:6px;">⚠️ Количества в шагах указаны для базового рецепта на ${base} порц. Основные ингредиенты пересчитаны на ${state.people} чел.</p>`:''}
     </div>
   </div>`;
 }
