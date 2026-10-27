@@ -1,0 +1,755 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e85d04">
+<title>Закупка на неделю</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Закупка">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f2f2f2; color: #222;
+    font-size: 15px; line-height: 1.4;
+    padding-bottom: 90px;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    padding: 12px; max-width: 640px; margin: 0 auto;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  h1 { font-size: 19px; margin: 0 0 4px 0; }
+  .sub { color: #666; font-size: 12.5px; margin-bottom: 12px; }
+  .card-block {
+    background: #fff; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  label { font-size: 11.5px; color: #666; font-weight: 600; display: block; margin-bottom: 4px; }
+  select, input[type="number"] {
+    width: 100%; padding: 11px 10px;
+    border: 1px solid #ccc; border-radius: 8px;
+    font-size: 16px; background: #fff;
+  }
+  button {
+    width: 100%; padding: 12px;
+    border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600;
+    background: #e85d04; color: #fff;
+    cursor: pointer; margin-top: 8px;
+  }
+  button:active { background: #c44e00; }
+  button.alt { background: #555; }
+  button.copy { background: #1976d2; }
+  button.share { background: #43a047; }
+  button.small { padding: 7px 10px; font-size: 13px; margin-top: 0; width: auto; }
+  #installBtn {
+    display: none; width: 100%; padding: 11px;
+    background: #1976d2; border-radius: 8px;
+    font-size: 14px; font-weight: 600;
+    margin-top: 8px; color: #fff; border: none;
+  }
+  .section-title { font-size: 13px; font-weight: 700; color: #444; margin: 4px 0 8px 0; }
+
+  .menu-item, .vs-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 10px 8px; border-radius: 8px;
+    background: #fafafa; margin-bottom: 6px;
+    cursor: pointer; user-select: none;
+  }
+  .menu-item:active, .vs-item:active { background: #f0f0f0; }
+  .menu-item input, .vs-item input {
+    margin: 2px 0 0 0; width: 20px; height: 20px;
+    accent-color: #e85d04; flex-shrink: 0;
+  }
+  .menu-item.checked { background: #fff3e0; }
+  .vs-item.checked { background: #fff8e1; }
+  .menu-item.disabled, .vs-item.disabled { opacity: 0.4; }
+  .menu-name { font-size: 13.5px; line-height: 1.3; }
+
+  .summary { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .sum-card {
+    flex: 1; min-width: 70px;
+    background: #fff3e0; border-radius: 8px;
+    padding: 8px 10px; text-align: center;
+    border-left: 3px solid #e85d04;
+  }
+  .sum-card b { display: block; font-size: 16px; margin-top: 2px; }
+  .sum-card span { font-size: 10.5px; color: #666; }
+
+  .block-title {
+    font-size: 14px; font-weight: 700;
+    padding: 10px 12px; border-radius: 8px;
+    margin: 14px 0 8px 0;
+  }
+  .block-once { background: #e8f5e9; color: #1b5e20; border-left: 4px solid #43a047; }
+  .block-weekly { background: #fff3e0; color: #e65100; border-left: 4px solid #e85d04; }
+
+  .prod {
+    background: #fff; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+  }
+  .prod-name {
+    font-weight: 600; font-size: 14px;
+    margin-bottom: 6px; display: flex;
+    justify-content: space-between; align-items: flex-start;
+    gap: 6px;
+  }
+  .prod-name .src {
+    font-size: 10px; color: #888; font-weight: 400;
+    white-space: nowrap;
+  }
+  .prod-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px; align-items: end;
+  }
+  .prod-row .cell { display: flex; flex-direction: column; min-width: 0; }
+  .prod-row label { font-size: 10px; color: #777; margin-bottom: 2px; }
+  .prod-row input {
+    padding: 9px 6px; font-size: 16px;
+    text-align: right; min-width: 0;
+  }
+  .prod-row .input-wrap { position: relative; }
+  .prod-row .input-wrap .unit {
+    position: absolute; right: 4px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px; color: #888;
+    pointer-events: none; background: rgba(255,255,255,0.9);
+    padding: 0 2px;
+  }
+  .prod-row input { padding-right: 24px; }
+  .prod-row .total {
+    padding: 9px 6px; font-size: 14px;
+    text-align: right; font-weight: 600;
+    background: #fffaf2; border-radius: 6px;
+    border: 1px solid #eee;
+    white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .changed input { border-color: #f0b400; background: #fffbe6; }
+
+  .prod-meta {
+    margin-top: 6px; font-size: 11px;
+    color: #666; display: flex;
+    gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .shelf-badge {
+    display: inline-block; padding: 2px 7px;
+    border-radius: 8px; font-size: 10.5px; font-weight: 600;
+  }
+  .shelf-vshort { background: #ffcdd2; color: #b71c1c; }
+  .shelf-short { background: #ffe0b2; color: #e65100; }
+  .shelf-medium { background: #fff9c4; color: #827717; }
+  .shelf-long { background: #dcedc8; color: #33691e; }
+  .shelf-vlong { background: #c8e6c9; color: #1b5e20; }
+  .perweek { font-style: italic; color: #1976d2; font-size: 10.5px; }
+
+  .week-block {
+    background: #fce4ec; border-radius: 8px;
+    padding: 10px 12px; margin: 8px 0;
+    font-size: 12.5px; color: #880e4f;
+  }
+  .week-block h4 { margin: 0 0 4px 0; font-size: 13px; }
+  .week-block ul { margin: 4px 0 0 18px; padding: 0; }
+
+  .sticky-total {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; z-index: 100;
+  }
+  .sticky-total .info { font-size: 11.5px; color: #666; line-height: 1.25; flex-shrink: 1; min-width: 0; }
+  .sticky-total .info b { display: block; font-size: 19px; color: #e85d04; }
+  .sticky-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .sticky-btns button {
+    padding: 10px 12px; margin: 0;
+    font-size: 13px; white-space: nowrap; width: auto;
+  }
+  .icon-btn { padding: 10px 12px; font-size: 18px; line-height: 1; }
+
+  .hint { font-size: 11.5px; color: #888; margin: 8px 0; }
+  .tip {
+    background: #e3f2fd; border-left: 4px solid #1976d2;
+    padding: 10px 12px; margin: 8px 0;
+    border-radius: 6px; font-size: 12px;
+  }
+  .warning {
+    background: #fff3cd; border-left: 4px solid #f0b400;
+    padding: 10px 12px; border-radius: 6px;
+    font-size: 12.5px; margin: 8px 0;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: #43a047; color: #fff; padding: 8px 16px;
+    border-radius: 20px; font-size: 13px; font-weight: 600;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 200; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; }
+  .toast.copied { background: #1976d2; }
+  .toast.error { background: #c62828; }
+
+  details {
+    background: #fff; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  details summary {
+    cursor: pointer; font-weight: 700;
+    font-size: 14px; padding: 4px 0;
+    list-style: none; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  details summary::after { content: '▼'; font-size: 11px; color: #888; }
+  details[open] summary::after { content: '▲'; }
+  details[open] { padding-bottom: 12px; }
+
+  /* ===== Маленькие экраны (iPhone SE 1st gen, 320px) ===== */
+  @media (max-width: 400px) {
+    body { font-size: 14px; padding-bottom: 84px; }
+    .wrap { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
+    h1 { font-size: 17px; }
+    .sub { font-size: 11px; margin-bottom: 8px; }
+    .card-block { padding: 10px; margin-bottom: 8px; }
+    .prod { padding: 8px 9px; margin-bottom: 5px; }
+    .prod-name { font-size: 13px; margin-bottom: 4px; }
+    .prod-name .src { font-size: 9px; }
+    .prod-row { gap: 4px; }
+    .prod-row input { padding: 8px 3px; padding-right: 20px; font-size: 16px; }
+    .prod-row .input-wrap .unit { font-size: 9px; right: 2px; }
+    .prod-row .total { padding: 8px 4px; font-size: 12px; }
+    .prod-row label { font-size: 9px; margin-bottom: 1px; }
+    .prod-meta { font-size: 10px; margin-top: 4px; }
+    .shelf-badge { font-size: 9.5px; padding: 1px 5px; }
+    .perweek { font-size: 9.5px; }
+    .menu-item, .vs-item { padding: 8px 6px; margin-bottom: 4px; }
+    .menu-name { font-size: 12.5px; }
+    .block-title { font-size: 13px; padding: 8px 10px; margin: 10px 0 6px 0; }
+    .sum-card { padding: 6px 8px; min-width: 60px; }
+    .sum-card b { font-size: 14px; }
+    .sum-card span { font-size: 9.5px; }
+    .sticky-total { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .sticky-total .info { font-size: 10.5px; }
+    .sticky-total .info b { font-size: 17px; }
+    .sticky-btns button { padding: 9px 10px; font-size: 12px; }
+    .icon-btn { padding: 9px 10px; font-size: 16px; }
+    .btn-label { display: none; }
+    .week-block { padding: 8px 10px; font-size: 11.5px; }
+    .week-block h4 { font-size: 12px; }
+  }
+
+  /* Очень узкие экраны (< 340px) — ещё компактнее */
+  @media (max-width: 340px) {
+    .prod-row .total { font-size: 11px; }
+    .prod-row input { padding-right: 16px; }
+    .prod-row .input-wrap .unit { font-size: 8px; }
+    .prod-name { font-size: 12px; }
+    .sum-card { min-width: 50px; padding: 5px 6px; }
+    .sum-card b { font-size: 13px; }
+  }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .sticky-total, button, .no-print, details summary::after { display: none !important; }
+    .prod, .card-block, details { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🛒 Закупка на неделю</h1>
+<p class="sub">Меню + ВС + недели + цены + сроки. Работает офлайн.</p>
+
+<div class="card-block">
+  <div class="row">
+    <div>
+      <label>Человек</label>
+      <input type="number" id="peopleInput" min="1" max="20" value="2" onchange="onSettingsChange()">
+    </div>
+    <div>
+      <label>Недель</label>
+      <select id="weeksInput" onchange="onSettingsChange()">
+        <option value="1">1</option><option value="2">2</option>
+        <option value="3">3</option><option value="4">4</option>
+      </select>
+    </div>
+  </div>
+  <button class="alt" onclick="window.print()">🖨 Сохранить PDF</button>
+  <button id="installBtn" onclick="installApp()">📲 Установить приложение</button>
+</div>
+
+<details open>
+  <summary>📋 Меню (до 5)</summary>
+  <div id="menuChecks"></div>
+</details>
+
+<details>
+  <summary>🍔 Блюдо на ВС (до 3)</summary>
+  <div id="vsChecks"></div>
+</details>
+
+<div class="warning" id="overrideWarning" style="display:none;">
+  ⚠️ Правок: <b id="overrideCount">0</b>
+  <button class="small" onclick="resetOverrides()">Кол-во</button>
+  <button class="small" onclick="resetPrices()">Цены</button>
+</div>
+
+<div id="result"></div>
+
+</div>
+
+<div class="sticky-total">
+  <div class="info">
+    <span id="stickySub">Итого:</span>
+    <b id="stickySum">0 ₽</b>
+  </div>
+  <div class="sticky-btns">
+    <button class="share icon-btn" onclick="shareList()" title="Поделиться">📤</button>
+    <button class="copy" onclick="copyList()">📋 <span class="btn-label">Копировать</span></button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ==================== ДАННЫЕ (все 11 меню + 7 ВС) ====================
+const menus = {
+  1:{name:"№1 — курица + рыба + творог",items:[["Курица (филе/бёдра)",1.0,"кг",400],["Фарш индейки",0.7,"кг",320],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Йогурт натуральный",0.15,"кг",70],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Вермишель",0.1,"кг",30],["Картофель",0.5,"кг",50],["Капуста",1.0,"кг",60],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
+  2:{name:"№2 — индейка + говядина + рыба",items:[["Индейка (филе/бёдра)",0.8,"кг",400],["Говядина (мякоть)",0.7,"кг",455],["Курица (бёдра/голени)",0.7,"кг",280],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Греческий йогурт",0.4,"кг",220],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Булгур",0.4,"кг",80],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Капуста",0.8,"кг",50],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.6,"кг",110],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Желатин/сахзам/корица",1,"компл",150],["Масло растит., специи",1,"компл",150]]},
+  3:{name:"№3 — бюджет: курица + минтай",items:[["Курица (бёдра/филе)",1.5,"кг",600],["Минтай заморож.",1.1,"кг",330],["Фарш куриный/индейки",0.4,"кг",180],["Творог 2–5%",0.9,"кг",405],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Рис",0.4,"кг",60],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.8,"кг",80],["Капуста",1.6,"кг",95],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.4,"кг",80],["Огурцы",0.4,"кг",70],["Заморож. овощные смеси",0.7,"кг",140],["Яблоки",1.0,"кг",100],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.3,"кг",120],["Лимон",1,"шт",30],["Томатная паста",20,"г",40],["Желатин/сахзам",1,"компл",80],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
+  4:{name:"№4 — индейка + говядина + рыба",items:[["Индейка (филе/бёдра)",0.8,"кг",400],["Говядина (мякоть)",0.7,"кг",455],["Рыба заморож.",1.1,"кг",385],["Курица/фарш для котлет",0.8,"кг",320],["Творог 2–5%",1.2,"кг",540],["Йогурт натуральный",0.2,"кг",90],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Рис",0.4,"кг",60],["Булгур",0.5,"кг",100],["Овсяные хлопья",0.4,"кг",70],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.6,"кг",110],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",150],["Масло растит., специи",1,"компл",150]]},
+  5:{name:"№5 — горбуша + курица + яйца",items:[["Горбуша/форель заморож.",0.8,"кг",375],["Курица (филе/бёдра)",1.2,"кг",480],["Минтай заморож. (котлеты)",0.8,"кг",240],["Творог 2–5%",0.6,"кг",270],["Йогурт натуральный",0.15,"кг",70],["Яйца",28,"шт",225],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.7,"кг",70],["Капуста",0.8,"кг",50],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.0,"кг",100],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
+  6:{name:"№6 — свинина + курица + рыба",items:[["Свинина (карбонад)",0.6,"кг",300],["Курица (филе/бёдра)",1.2,"кг",480],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",0.9,"кг",405],["Йогурт натуральный",0.2,"кг",90],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Вермишель",0.1,"кг",30],["Картофель",0.8,"кг",80],["Капуста",1.0,"кг",60],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
+  7:{name:"№7 — индейка + рыба + яйца",items:[["Индейка (филе/бёдра)",1.3,"кг",650],["Рыба заморож.",1.4,"кг",490],["Творог 2–5%",0.7,"кг",315],["Йогурт натуральный",0.15,"кг",70],["Яйца",28,"шт",225],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.7,"кг",70],["Капуста",0.9,"кг",55],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
+  8:{name:"№8 — рыбно-мясное",items:[["Говядина (мякоть)",0.7,"кг",455],["Лосось заморож.",0.8,"кг",800],["Индейка (филе/бёдра)",0.8,"кг",400],["Креветки заморож.",1.0,"кг",800],["Творог 2–5%",1.2,"кг",540],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Макароны",0.3,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Помидоры",0.9,"кг",180],["Огурцы",0.5,"кг",90],["Капуста",0.8,"кг",50],["Морковь",0.7,"кг",60],["Лук",0.7,"кг",60],["Заморож. овощные смеси",1.1,"кг",220],["Шпинат заморож.",0.5,"кг",150],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.6,"кг",240],["Лимон",1,"шт",30],["Орехи",0.25,"кг",250],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.25,"л",300],["Специи",1,"компл",100]]},
+  9:{name:"№9 — с креветками и фетой",items:[["Курица (филе/бёдра)",0.7,"кг",420],["Треска/минтай заморож.",0.7,"кг",280],["Креветки заморож.",0.6,"кг",600],["Говядина (мякоть)",0.9,"кг",585],["Творог 2–5%",1.2,"кг",540],["Яйца",24,"шт",190],["Кефир",1,"л",100],["Булгур",0.4,"кг",80],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.6,"кг",60],["Морковь",0.7,"кг",60],["Лук",0.7,"кг",60],["Помидоры",0.9,"кг",180],["Огурцы",0.4,"кг",70],["Капуста",0.8,"кг",50],["Заморож. овощные смеси",1.2,"кг",240],["Шпинат заморож.",0.4,"кг",120],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.7,"кг",280],["Лимон",1,"шт",30],["Орехи",0.3,"кг",300],["Фета/брынза",0.2,"кг",330],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.35,"л",420],["Специи",1,"компл",100]]},
+  10:{name:"№10 — запекание и крупы",items:[["Курица (бёдра/голени)",0.8,"кг",320],["Треска/минтай заморож.",1.0,"кг",350],["Индейка (филе/бёдра)",1.0,"кг",500],["Творог 2–5%",1.2,"кг",540],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Кускус",0.3,"кг",90],["Полба (или булгур)",0.4,"кг",130],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.8,"кг",80],["Морковь",0.8,"кг",70],["Лук",0.7,"кг",60],["Помидоры",0.7,"кг",140],["Огурцы",0.4,"кг",70],["Кабачки",0.7,"кг",110],["Перец болгарский",0.6,"кг",180],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Орехи",0.2,"кг",200],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.25,"л",300],["Специи (розмарин)",1,"компл",150]]},
+  11:{name:"№11 — фольга, киноа",items:[["Говядина (мякоть)",0.7,"кг",455],["Лосось заморож.",1.0,"кг",1000],["Курица (филе/бёдра)",1.0,"кг",400],["Творог 2–5%",1.2,"кг",540],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Киноа",0.3,"кг",180],["Рис",0.4,"кг",60],["Овсяные хлопья",0.4,"кг",70],["Свёкла",0.5,"кг",50],["Батат (или тыква)",0.6,"кг",120],["Морковь",0.8,"кг",70],["Лук",0.7,"кг",60],["Помидоры",0.6,"кг",120],["Огурцы",0.4,"кг",70],["Капуста",0.6,"кг",40],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Орехи",0.2,"кг",200],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.35,"л",420],["Специи (паприка)",1,"компл",150]]}
+};
+const vsData = {
+  1:{name:"Бургер + картофель",items:[["Булочка для бургера",1,"шт",30],["Фарш куриный",0.12,"кг",48],["Сыр",0.02,"кг",12],["Помидоры",0.05,"кг",10],["Огурец маринованный",0.03,"кг",9],["Салат листовой",0.01,"кг",3],["Соус (йогурт)",0.02,"кг",6],["Картофель",0.2,"кг",20],["Масло растит.",0.01,"кг",2]]},
+  2:{name:"Шаурма с курицей",items:[["Лаваш тонкий",1,"шт",100],["Курица (филе/бёдра)",0.15,"кг",60],["Капуста",0.08,"кг",5],["Морковь по-корейски",0.05,"кг",15],["Огурцы",0.05,"кг",9],["Помидоры",0.05,"кг",10],["Соус (йогурт)",0.03,"кг",9],["Масло растит.",0.005,"кг",1]]},
+  3:{name:"Пицца",items:[["Тесто тонкое",0.08,"кг",16],["Курица (филе/бёдра)",0.1,"кг",40],["Моцарелла",0.06,"кг",42],["Томатный соус",0.04,"кг",8],["Помидоры",0.05,"кг",10],["Перец болгарский",0.04,"кг",10],["Оливки",0.02,"кг",8]]},
+  4:{name:"Блины с творогом",items:[["Мука",0.06,"кг",4],["Яйца",1,"шт",8],["Молоко",0.15,"л",12],["Творог 2–5%",0.1,"кг",45],["Ягоды замороженные",0.08,"кг",32],["Масло растит.",0.005,"кг",1]]},
+  5:{name:"Кесадилья",items:[["Тортилья",1,"шт",100],["Курица (филе/бёдра)",0.12,"кг",48],["Сыр",0.05,"кг",30],["Перец болгарский",0.05,"кг",13],["Лук",0.03,"кг",2],["Соус (йогурт)",0.03,"кг",9],["Масло растит.",0.005,"кг",1]]},
+  6:{name:"Хот-дог с индейкой",items:[["Булочка для хот-дога",1,"шт",25],["Сосиска из индейки",0.08,"кг",40],["Сыр",0.015,"кг",9],["Огурец маринованный",0.03,"кг",9],["Горчица/кетчуп",0.015,"кг",5],["Картофель",0.2,"кг",20],["Масло растит.",0.01,"кг",2]]},
+  7:{name:"Наггетсы + пюре",items:[["Курица (филе/бёдра)",0.15,"кг",60],["Яйца",1,"шт",8],["Панировка (сухари)",0.03,"кг",5],["Картофель",0.2,"кг",20],["Молоко",0.05,"л",4],["Масло сливочное",0.01,"кг",8],["Масло растит.",0.01,"кг",2]]}
+};
+const SHELF = {
+  chicken:["90+ дн",90],turkey:["90+ дн",90],beef:["90+ дн",90],pork:["90+ дн",90],mince:["90 дн",90],
+  fish_white:["90+ дн",90],fish_red:["90+ дн",90],shrimp:["90 дн",90],sausage:["5–7 дн",7],
+  eggs:["25–30 дн",28],cottage:["5–7 дн",7],yogurt:["7–10 дн",9],kefir:["7–10 дн",9],milk:["5–7 дн",7],
+  feta:["15–20 дн*",20],cheese:["15–20 дн",20],mozzarella:["15–20 дн*",20],butter:["30–60 дн",45],
+  buckwheat:["180+ дн",180],rice:["180+ дн",180],oats:["180+ дн",180],pasta:["180+ дн",180],
+  bulgur:["180+ дн",180],couscous:["180+ дн",180],quinoa:["180+ дн",180],spelt:["180+ дн",180],
+  flour:["180+ дн",180],breading:["180+ дн",180],
+  potato:["20–30 дн",25],cabbage:["20–30 дн",25],carrot:["20–30 дн",25],korean_carrot:["15–20 дн*",18],
+  onion:["20–30 дн",25],tomato:["5–7 дн",6],cucumber:["5–7 дн",6],pickled_cucumber:["180+ дн",180],
+  lettuce:["3–5 дн",4],zucchini:["10–14 дн",12],pepper:["7–10 дн",9],spinach:["180+ дн*",180],
+  beet:["20–30 дн",25],sweet_potato:["20–30 дн",25],veg_mix:["180+ дн*",180],
+  apple:["20–30 дн",25],banana:["5–7 дн",6],berries:["180+ дн*",180],lemon:["15–20 дн",18],
+  nuts:["90–180 дн",90],bread:["3–5 дн*",4],bun_burger:["2–3 дн",3],bun_hotdog:["2–3 дн",3],
+  lavash:["5–7 дн*",6],tortilla:["7–10 дн",8],dough:["90 дн*",90],
+  oil_spices:["180+ дн",180],olive_oil:["180+ дн",180],oil:["180+ дн",180],spices:["365+ дн",365],
+  gelatin:["180+ дн",180],chocolate:["180 дн",180],tomato_paste:["180+ дн*",180],
+  sauce:["5–7 дн",6],tomato_sauce:["180+ дн*",180],olives:["180+ дн",180],mustard_ketchup:["180+ дн",180]
+};
+const productInfo = {
+  chicken:{name:"Курица",unit:"кг",cat:"Мясо / рыба",perishable:false},turkey:{name:"Индейка",unit:"кг",cat:"Мясо / рыба",perishable:false},
+  beef:{name:"Говядина",unit:"кг",cat:"Мясо / рыба",perishable:false},pork:{name:"Свинина",unit:"кг",cat:"Мясо / рыба",perishable:false},
+  mince:{name:"Фарш",unit:"кг",cat:"Мясо / рыба",perishable:false},fish_white:{name:"Рыба белая",unit:"кг",cat:"Мясо / рыба",perishable:false},
+  fish_red:{name:"Лосось/горбуша",unit:"кг",cat:"Мясо / рыба",perishable:false},shrimp:{name:"Креветки",unit:"кг",cat:"Мясо / рыба",perishable:false},
+  sausage:{name:"Сосиска из индейки",unit:"кг",cat:"Мясо / рыба",perishable:false},eggs:{name:"Яйца",unit:"шт",cat:"Молочные / яйца",perishable:false},
+  cottage:{name:"Творог",unit:"кг",cat:"Молочные / яйца",perishable:true},yogurt:{name:"Йогурт",unit:"кг",cat:"Молочные / яйца",perishable:true},
+  kefir:{name:"Кефир",unit:"л",cat:"Молочные / яйца",perishable:true},feta:{name:"Фета/брынза",unit:"кг",cat:"Молочные / яйца",perishable:false},
+  cheese:{name:"Сыр",unit:"кг",cat:"Молочные / яйца",perishable:false},mozzarella:{name:"Моцарелла",unit:"кг",cat:"Молочные / яйца",perishable:true},
+  milk:{name:"Молоко",unit:"л",cat:"Молочные / яйца",perishable:true},butter:{name:"Масло сливочное",unit:"кг",cat:"Молочные / яйца",perishable:false},
+  buckwheat:{name:"Гречка",unit:"кг",cat:"Крупы",perishable:false},rice:{name:"Рис",unit:"кг",cat:"Крупы",perishable:false},
+  oats:{name:"Овсяные хлопья",unit:"кг",cat:"Крупы",perishable:false},pasta:{name:"Макароны/вермишель",unit:"кг",cat:"Крупы",perishable:false},
+  bulgur:{name:"Булгур",unit:"кг",cat:"Крупы",perishable:false},couscous:{name:"Кускус",unit:"кг",cat:"Крупы",perishable:false},
+  quinoa:{name:"Киноа",unit:"кг",cat:"Крупы",perishable:false},spelt:{name:"Полба",unit:"кг",cat:"Крупы",perishable:false},
+  flour:{name:"Мука",unit:"кг",cat:"Крупы",perishable:false},breading:{name:"Панировка",unit:"кг",cat:"Крупы",perishable:false},
+  potato:{name:"Картофель",unit:"кг",cat:"Овощи",perishable:false},cabbage:{name:"Капуста",unit:"кг",cat:"Овощи",perishable:false},
+  carrot:{name:"Морковь",unit:"кг",cat:"Овощи",perishable:false},korean_carrot:{name:"Морковь по-корейски",unit:"кг",cat:"Овощи",perishable:false},
+  onion:{name:"Лук",unit:"кг",cat:"Овощи",perishable:false},tomato:{name:"Помидоры",unit:"кг",cat:"Овощи",perishable:true},
+  cucumber:{name:"Огурцы",unit:"кг",cat:"Овощи",perishable:true},pickled_cucumber:{name:"Огурец маринованный",unit:"кг",cat:"Овощи",perishable:false},
+  lettuce:{name:"Салат листовой",unit:"кг",cat:"Овощи",perishable:true},zucchini:{name:"Кабачки",unit:"кг",cat:"Овощи",perishable:true},
+  pepper:{name:"Перец болгарский",unit:"кг",cat:"Овощи",perishable:true},spinach:{name:"Шпинат заморож.",unit:"кг",cat:"Овощи",perishable:false},
+  beet:{name:"Свёкла",unit:"кг",cat:"Овощи",perishable:false},sweet_potato:{name:"Батат",unit:"кг",cat:"Овощи",perishable:false},
+  veg_mix:{name:"Заморож. овощи",unit:"кг",cat:"Овощи",perishable:false},apple:{name:"Яблоки",unit:"кг",cat:"Фрукты / ягоды",perishable:false},
+  banana:{name:"Бананы",unit:"кг",cat:"Фрукты / ягоды",perishable:true},berries:{name:"Ягоды заморож.",unit:"кг",cat:"Фрукты / ягоды",perishable:false},
+  lemon:{name:"Лимон",unit:"шт",cat:"Фрукты / ягоды",perishable:false},nuts:{name:"Орехи",unit:"кг",cat:"Прочее",perishable:false},
+  bread:{name:"Хлеб",unit:"шт",cat:"Прочее",perishable:true},bun_burger:{name:"Булочка для бургера",unit:"шт",cat:"Прочее",perishable:true},
+  bun_hotdog:{name:"Булочка для хот-дога",unit:"шт",cat:"Прочее",perishable:true},lavash:{name:"Лаваш",unit:"шт",cat:"Прочее",perishable:true},
+  tortilla:{name:"Тортилья",unit:"шт",cat:"Прочее",perishable:true},dough:{name:"Тесто",unit:"кг",cat:"Прочее",perishable:false},
+  oil_spices:{name:"Масло растит. + специи",unit:"компл",cat:"Прочее",perishable:false},olive_oil:{name:"Оливковое масло",unit:"л",cat:"Прочее",perishable:false},
+  oil:{name:"Масло растительное",unit:"кг",cat:"Прочее",perishable:false},spices:{name:"Специи",unit:"компл",cat:"Прочее",perishable:false},
+  gelatin:{name:"Желатин/сахзам/какао",unit:"компл",cat:"Прочее",perishable:false},chocolate:{name:"Шоколад 70%+",unit:"г",cat:"Прочее",perishable:false},
+  tomato_paste:{name:"Томатная паста",unit:"г",cat:"Прочее",perishable:false},sauce:{name:"Соус (йогурт)",unit:"кг",cat:"Прочее",perishable:true},
+  tomato_sauce:{name:"Томатный соус",unit:"кг",cat:"Прочее",perishable:false},olives:{name:"Оливки",unit:"кг",cat:"Прочее",perishable:false},
+  mustard_ketchup:{name:"Горчица/кетчуп",unit:"кг",cat:"Прочее",perishable:false}
+};
+
+function getCanonical(name) {
+  const n = name.toLowerCase();
+  if (n.includes("морковь по-корейски")||n.includes("морковь по корейски"))return"korean_carrot";
+  if (n.includes("огурец маринованный")||n.includes("огурцы маринованные"))return"pickled_cucumber";
+  if (n.includes("томатная паста"))return"tomato_paste";
+  if (n.includes("томатный соус"))return"tomato_sauce";
+  if (n.includes("масло сливочное"))return"butter";
+  if (n.includes("оливковое масло"))return"olive_oil";
+  if (n.includes("масло растительное, специи"))return"oil_spices";
+  if (n.includes("масло растительное")||n.includes("масло растит"))return"oil";
+  if (n.includes("горчица")||n.includes("кетчуп"))return"mustard_ketchup";
+  if (n.includes("соус"))return"sauce";
+  if (n.includes("панировка"))return"breading";
+  if (n.includes("тесто"))return"dough";
+  if (n.includes("булочка для бургера"))return"bun_burger";
+  if (n.includes("булочка для хот-дога"))return"bun_hotdog";
+  if (n.includes("лаваш"))return"lavash";
+  if (n.includes("тортилья"))return"tortilla";
+  if (n.includes("моцарелла"))return"mozzarella";
+  if (n.includes("сыр"))return"cheese";
+  if (n.includes("молоко"))return"milk";
+  if (n.includes("сосиска"))return"sausage";
+  if (n.includes("оливки"))return"olives";
+  if (n.includes("салат листовой"))return"lettuce";
+  if (n.includes("фета")||n.includes("брынза"))return"feta";
+  if (n.includes("курица")||n.includes("куриное"))return n.includes("фарш")?"mince":"chicken";
+  if (n.includes("индейка")||n.includes("индейки"))return n.includes("фарш")?"mince":"turkey";
+  if (n.includes("говядина"))return"beef";
+  if (n.includes("свинина"))return"pork";
+  if (n.includes("фарш"))return"mince";
+  if (n.includes("лосось")||n.includes("горбуша")||n.includes("форель"))return"fish_red";
+  if (n.includes("рыба")||n.includes("минтай")||n.includes("треска"))return"fish_white";
+  if (n.includes("креветки"))return"shrimp";
+  if (n.includes("яйца"))return"eggs";
+  if (n.includes("творог"))return"cottage";
+  if (n.includes("йогурт"))return"yogurt";
+  if (n.includes("кефир"))return"kefir";
+  if (n.includes("гречка"))return"buckwheat";
+  if (n.includes("рис"))return"rice";
+  if (n.includes("овсяные")||n.includes("овсянка"))return"oats";
+  if (n.includes("макароны")||n.includes("вермишель"))return"pasta";
+  if (n.includes("булгур"))return"bulgur";
+  if (n.includes("кускус"))return"couscous";
+  if (n.includes("киноа"))return"quinoa";
+  if (n.includes("полба"))return"spelt";
+  if (n.includes("мука"))return"flour";
+  if (n.includes("картофель"))return"potato";
+  if (n.includes("капуста"))return"cabbage";
+  if (n.includes("морковь"))return"carrot";
+  if (n.includes("лук"))return"onion";
+  if (n.includes("помидор"))return"tomato";
+  if (n.includes("огурц"))return"cucumber";
+  if (n.includes("кабачк"))return"zucchini";
+  if (n.includes("перец"))return"pepper";
+  if (n.includes("шпинат"))return"spinach";
+  if (n.includes("свёкла")||n.includes("свекла"))return"beet";
+  if (n.includes("батат"))return"sweet_potato";
+  if (n.includes("овощные смеси"))return"veg_mix";
+  if (n.includes("яблок"))return"apple";
+  if (n.includes("банан"))return"banana";
+  if (n.includes("ягоды"))return"berries";
+  if (n.includes("лимон"))return"lemon";
+  if (n.includes("орех"))return"nuts";
+  if (n.includes("хлеб"))return"bread";
+  if (n.includes("специи"))return"spices";
+  if (n.includes("желатин")||n.includes("сахзам")||n.includes("какао"))return"gelatin";
+  if (n.includes("шоколад"))return"chocolate";
+  return null;
+}
+function fmtQty(q,u){
+  if(u==="кг")return q>=1?(Math.round(q*100)/100).toString().replace(/\.?0+$/,'')+" кг":Math.round(q*1000)+" г";
+  if(u==="л")return q>=1?(Math.round(q*100)/100).toString().replace(/\.?0+$/,'')+" л":Math.round(q*1000)+" мл";
+  if(u==="г")return Math.round(q)+" г";
+  if(u==="шт")return Math.round(q)+" шт";
+  if(u==="компл")return Math.round(q)+" к.";
+  return q+" "+u;
+}
+function fmtP(p){return Math.round(p).toLocaleString('ru-RU')+' ₽';}
+function shelfCls(d){return d<7?'shelf-vshort':d<15?'shelf-short':d<30?'shelf-medium':d<90?'shelf-long':'shelf-vlong';}
+function rnd(q){return q>=10?Math.round(q):q>=1?Math.round(q*10)/10:Math.round(q*100)/100;}
+
+// ==================== STATE ====================
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{}};
+let state=loadState();
+let currentProducts={};
+function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v1'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
+function saveState(){try{localStorage.setItem('calc_pwa_v1',JSON.stringify(state));}catch(e){}}
+let toastTimer;
+function showToast(txt,cls){
+  const el=document.getElementById('toast');
+  el.textContent=txt;el.className='toast show'+(cls?' '+cls:'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),1600);
+}
+
+// ==================== UI ====================
+function initUI(){
+  const mBox=document.getElementById('menuChecks');mBox.innerHTML='';
+  for(let id=1;id<=11;id++){
+    const lbl=document.createElement('label');lbl.className='menu-item';
+    lbl.innerHTML=`<input type="checkbox" class="menu-cb" value="${id}" onchange="onSettingsChange()"><span class="menu-name">${menus[id].name}</span>`;
+    mBox.appendChild(lbl);
+  }
+  const vBox=document.getElementById('vsChecks');vBox.innerHTML='';
+  for(let id=1;id<=7;id++){
+    const lbl=document.createElement('label');lbl.className='vs-item';
+    lbl.innerHTML=`<input type="checkbox" class="vs-cb" value="${id}" onchange="onSettingsChange()"><span class="menu-name">${vsData[id].name}</span>`;
+    vBox.appendChild(lbl);
+  }
+  document.getElementById('peopleInput').value=state.people;
+  document.getElementById('weeksInput').value=state.weeks;
+  document.querySelectorAll('.menu-cb').forEach(cb=>cb.checked=state.menus.includes(+cb.value));
+  document.querySelectorAll('.vs-cb').forEach(cb=>cb.checked=state.vs.includes(+cb.value));
+  refreshChecks();
+}
+function refreshChecks(){
+  document.querySelectorAll('.menu-cb').forEach(cb=>{cb.closest('.menu-item').classList.toggle('checked',cb.checked);});
+  document.querySelectorAll('.vs-cb').forEach(cb=>{cb.closest('.vs-item').classList.toggle('checked',cb.checked);});
+  const mc=document.querySelectorAll('.menu-cb:checked').length;
+  const vc=document.querySelectorAll('.vs-cb:checked').length;
+  document.querySelectorAll('.menu-cb').forEach(cb=>{cb.disabled=!cb.checked&&mc>=5;cb.closest('.menu-item').classList.toggle('disabled',cb.disabled);});
+  document.querySelectorAll('.vs-cb').forEach(cb=>{cb.disabled=!cb.checked&&vc>=3;cb.closest('.vs-item').classList.toggle('disabled',cb.disabled);});
+}
+function onSettingsChange(){
+  state.people=+document.getElementById('peopleInput').value||1;
+  state.weeks=+document.getElementById('weeksInput').value||1;
+  state.menus=[...document.querySelectorAll('.menu-cb:checked')].map(c=>+c.value);
+  state.vs=[...document.querySelectorAll('.vs-cb:checked')].map(c=>+c.value);
+  saveState();refreshChecks();build();
+}
+function setQty(key,val){
+  const n=parseFloat(val);
+  if(isNaN(n)||n<=0)delete state.overrides[key];else state.overrides[key]=n;
+  saveState();updateRow(key);updateTotals();
+}
+function setPrice(key,val){
+  const n=parseFloat(val);
+  if(isNaN(n)||n<=0)delete state.prices[key];else state.prices[key]=n;
+  saveState();updateRow(key);updateTotals();
+}
+function resetOverrides(){state.overrides={};saveState();build();}
+function resetPrices(){state.prices={};saveState();build();}
+
+function updateRow(key){
+  const p=currentProducts[key];if(!p)return;
+  const qo=state.overrides[key]!==undefined,po=state.prices[key]!==undefined;
+  p.q=qo?state.overrides[key]:p.calcQ;p.up=po?state.prices[key]:p.calcUP;p.sum=p.up*p.q;
+  const qi=document.getElementById('q_'+key),pi=document.getElementById('p_'+key),si=document.getElementById('s_'+key);
+  if(qi){qi.value=rnd(p.q);qi.closest('.cell').classList.toggle('changed',qo);}
+  if(pi){pi.value=rnd(p.up);pi.closest('.cell').classList.toggle('changed',po);}
+  if(si)si.textContent=fmtP(p.sum);
+}
+function updateTotals(){
+  let L=0,W=0;
+  Object.values(currentProducts).forEach(p=>p.perishable?W+=p.sum:L+=p.sum);
+  document.getElementById('stickySub').textContent=state.weeks+' нед · '+state.people+' чел:';
+  document.getElementById('stickySum').textContent=fmtP(L+W);
+  const el=document.getElementById('grandTotal');
+  if(el)el.innerHTML=`<b>💰 Итого:</b> ${fmtP(L+W)} (разово ${fmtP(L)} + еженед. ${fmtP(W)})`;
+}
+function updateWarning(){
+  const n=Object.keys(state.overrides).length+Object.keys(state.prices).length;
+  document.getElementById('overrideWarning').style.display=n>0?'flex':'none';
+  document.getElementById('overrideCount').textContent=n;
+}
+
+function build(){
+  if(!state.menus.length&&!state.vs.length){
+    document.getElementById('result').innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
+    updateTotals();updateWarning();return;
+  }
+  const products={};
+  function add(name,qty,unit,price,src){
+    const key=getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
+    if(!products[key]){
+      const info=productInfo[key]||{name,unit,cat:"Прочее",perishable:false};
+      const sh=SHELF[key]||["—",0];
+      products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,
+        shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set()};
+    }
+    let f=qty;
+    if(products[key].unit==="кг"&&unit==="г")f=qty/1000;
+    if(products[key].unit==="г"&&unit==="кг")f=qty*1000;
+    if(products[key].unit==="л"&&unit==="мл")f=qty/1000;
+    if(products[key].unit==="мл"&&unit==="л")f=qty*1000;
+    products[key].calcQ+=f*state.weeks;
+    products[key].calcSum+=price*state.weeks;
+    products[key].src.add(src);
+  }
+  state.menus.forEach(id=>menus[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"М"+id)));
+  state.vs.forEach(id=>vsData[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"ВС"+id)));
+  Object.values(products).forEach(p=>{
+    p.calcUP=p.calcQ>0?p.calcSum/p.calcQ:0;
+    const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
+    p.q=qo?state.overrides[p.key]:p.calcQ;
+    p.up=po?state.prices[p.key]:p.calcUP;
+    p.sum=p.up*p.q;
+  });
+  currentProducts=products;
+
+  const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
+  const long=[],weekly=[];
+  Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
+
+  let html='<div class="summary">';
+  html+=`<div class="sum-card"><span>Меню</span><b>${state.menus.length||"—"}</b></div>`;
+  html+=`<div class="sum-card"><span>ВС</span><b>${state.vs.length||"—"}</b></div>`;
+  html+=`<div class="sum-card"><span>Чел.</span><b>${state.people}</b></div>`;
+  html+=`<div class="sum-card"><span>Нед.</span><b>${state.weeks}</b></div></div>`;
+
+  html+=`<div class="block-title block-once">📦 Один раз на ${state.weeks} нед.</div>`;
+  cats.forEach(cat=>{
+    const items=long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+    items.forEach(p=>{html+=renderProd(p,false);});
+  });
+
+  html+=`<div class="block-title block-weekly">🔄 Каждую неделю × ${state.weeks}</div>`;
+  cats.forEach(cat=>{
+    const items=weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+    items.forEach(p=>{html+=renderProd(p,true);});
+  });
+
+  if(state.weeks>1){
+    html+='<div class="block-title" style="background:#f3e5f5;color:#6a1b9a;border-left:4px solid #8e24aa;">📅 План</div>';
+    for(let w=1;w<=state.weeks;w++){
+      html+=`<div class="week-block"><h4>Неделя ${w}${w===1?' (всё)':' (только скоропорт.)'}</h4><ul>`;
+      if(w===1)html+='<li>Один раз — всё из блока 📦</li>';
+      html+=`<li>Еженедельно: ${weekly.map(p=>p.name.toLowerCase()).join(', ')}</li></ul></div>`;
+    }
+  }
+  html+=`<div class="tip" id="grandTotal"><b>💰 Итого:</b> считаем…</div>`;
+  html+=`<p class="hint">💡 Количество и цену можно редактировать. Правки — жёлтый фон. Значок * = закрытая упаковка/заморозка.</p>`;
+  document.getElementById('result').innerHTML=html;
+  updateTotals();updateWarning();
+}
+function renderProd(p,weekly){
+  const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
+  let h='<div class="prod">';
+  h+=`<div class="prod-name"><span>${p.name}</span><span class="src">${[...p.src].join(',')}</span></div>`;
+  h+='<div class="prod-row">';
+  h+=`<div class="cell"><label>кол-во</label><div class="input-wrap${qo?' changed':''}"><input type="number" step="any" min="0" id="q_${p.key}" value="${rnd(p.q)}" onchange="setQty('${p.key}',this.value)"><span class="unit">${p.unit}</span></div></div>`;
+  h+=`<div class="cell"><label>цена/${p.unit}</label><div class="input-wrap${po?' changed':''}"><input type="number" step="any" min="0" id="p_${p.key}" value="${rnd(p.up)}" onchange="setPrice('${p.key}',this.value)"><span class="unit">₽</span></div></div>`;
+  h+=`<div class="cell"><label>сумма</label><div class="total" id="s_${p.key}">${fmtP(p.sum)}</div></div>`;
+  h+='</div><div class="prod-meta">';
+  h+=`<span class="shelf-badge ${shelfCls(p.shDays)}">${p.shText}</span>`;
+  if(weekly)h+=`<span class="perweek">${fmtQty(p.q/state.weeks,p.unit)}/нед</span>`;
+  h+='</div></div>';
+  return h;
+}
+
+// ==================== SHARE + COPY ====================
+function buildListText(){
+  const weeks=state.weeks,people=state.people;
+  const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
+  let t=`🛒 Закупка на ${weeks} нед · ${people} чел\n`;
+  if(state.menus.length)t+=`📋 Меню: ${state.menus.map(id=>'№'+id).join(', ')}\n`;
+  if(state.vs.length)t+=`🍔 ВС: ${state.vs.map(id=>vsData[id].name).join(', ')}\n`;
+  t+='\n';
+  const long=[],weekly=[];
+  Object.values(currentProducts).forEach(p=>p.perishable?weekly.push(p):long.push(p));
+  let L=0,W=0;
+  if(long.length){
+    t+=`━━━ 📦 ОДИН РАЗ ━━━\n`;
+    cats.forEach(c=>{
+      const it=long.filter(p=>p.cat===c);if(!it.length)return;
+      t+=`\n▸ ${c}\n`;
+      it.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
+        t+=`• ${p.name} — ${fmtQty(p.q,p.unit)} · ${Math.round(p.up)}₽/${p.unit} = ${Math.round(p.sum)}₽\n`;L+=p.sum;
+      });
+    });
+    t+=`\nИтого разово: ${Math.round(L)}₽\n\n`;
+  }
+  if(weekly.length){
+    t+=`━━━ 🔄 КАЖДУЮ НЕДЕЛЮ × ${weeks} ━━━\n`;
+    cats.forEach(c=>{
+      const it=weekly.filter(p=>p.cat===c);if(!it.length)return;
+      t+=`\n▸ ${c}\n`;
+      it.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
+        t+=`• ${p.name} — ${fmtQty(p.q/weeks,p.unit)}/нед · всего ${fmtQty(p.q,p.unit)} · ≈${Math.round(p.sum)}₽\n`;W+=p.sum;
+      });
+    });
+    t+=`\nИтого еженед.: ${Math.round(W)}₽\n\n`;
+  }
+  t+=`💰 ВСЕГО: ${Math.round(L+W)}₽`;
+  return t;
+}
+function copyList(){
+  if(!Object.keys(currentProducts).length){showToast('Выберите меню','error');return;}
+  copyText(buildListText());
+}
+function copyText(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(()=>showToast('✓ Скопировано','copied')).catch(()=>fbCopy(t));
+  } else fbCopy(t);
+}
+function fbCopy(t){
+  const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');showToast('✓ Скопировано','copied');}catch(e){showToast('Не удалось','error');}
+  document.body.removeChild(ta);
+}
+async function shareList(){
+  if(!Object.keys(currentProducts).length){showToast('Выберите меню','error');return;}
+  const text=buildListText();
+  if(navigator.share){
+    try{
+      await navigator.share({title:'Закупка на неделю',text:text});
+    }catch(e){
+      if(e.name!=='AbortError')copyText(text);
+    }
+  } else {
+    copyText(text);
+    showToast('Скопировано (share недоступен)','copied');
+  }
+}
+
+// ==================== PWA ====================
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById('installBtn').style.display='block';
+});
+async function installApp(){
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  const r=await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('installBtn').style.display='none';
+}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+if(navigator.storage&&navigator.storage.persist){
+  navigator.storage.persist().catch(()=>{});
+}
+
+// ==================== START ====================
+initUI();
+build();
+</script>
+</body>
+</html>
