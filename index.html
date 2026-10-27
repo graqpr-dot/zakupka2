@@ -434,6 +434,16 @@
 <div class="tab-content" id="tab-settings">
   <h1>⚙️ Настройки</h1>
   <div class="card-block">
+  <h2>📦 Мои продукты</h2>
+  <p class="hint">Добавляйте продукты, которых нет в базе (тофу, скумбрия, брокколи и т.д.). Они попадут в закупку по вашим рецептам.</p>
+  <div id="myProductsList"></div>
+  <div style="display:flex; gap:6px; margin-top:8px;">
+  <button class="small" style="background:#1976d2;margin:0;flex:1;" onclick="copyStandardDict()">📋 Копировать базу</button>
+  <button class="small" style="background:#555;margin:0;flex:1;" onclick="downloadStandardDict()">💾 Скачать базу</button>
+</div>
+  <button onclick="openProductEditor()" style="margin-top:8px;">➕ Добавить продукт</button>
+</div>
+  <div class="card-block">
     <h2>🔔 Напоминание</h2>
     <label>День закупки</label>
     <select id="reminderDay" onchange="saveReminderDay()">
@@ -479,7 +489,45 @@
 </nav>
 
 <div id="toast" class="toast"></div>
-
+<div id="productEditor" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeProductEditor()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="productEditorTitle">Новый продукт</h2>
+      <button class="modal-close" onclick="closeProductEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pe_key">
+      <label>Название *</label>
+      <input type="text" id="pe_name" placeholder="Тофу">
+      <label>Категория</label>
+      <select id="pe_cat">
+        <option value="Мясо / рыба">Мясо / рыба</option>
+        <option value="Молочные / яйца">Молочные / яйца</option>
+        <option value="Крупы">Крупы</option>
+        <option value="Овощи">Овощи</option>
+        <option value="Фрукты / ягоды">Фрукты / ягоды</option>
+        <option value="Прочее" selected>Прочее</option>
+      </select>
+      <label>Единица измерения</label>
+      <select id="pe_unit">
+        <option value="кг">кг</option>
+        <option value="г">г</option>
+        <option value="л">л</option>
+        <option value="мл">мл</option>
+        <option value="шт">шт</option>
+      </select>
+      <label>Цена за 1 единицу, ₽</label>
+      <input type="number" id="pe_price" min="0" step="1" value="0">
+      <label>Скоропортящийся?</label>
+      <select id="pe_perishable">
+        <option value="0">Нет (хранится долго)</option>
+        <option value="1">Да (молочка, зелень, хлеб)</option>
+      </select>
+      <button class="alt" onclick="saveProductFromModal()" style="margin-top:14px;">💾 Сохранить</button>
+      <button class="danger" id="pe_delete_btn" onclick="deleteFromProductModal()" style="display:none;">🗑 Удалить</button>
+    </div>
+  </div>
+</div>
 <div id="recipeEditor" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeRecipeEditor()">
   <div class="modal">
     <div class="modal-header">
@@ -504,6 +552,10 @@
       <label>Ингредиенты *</label>
       <textarea id="re_ing" placeholder="свёкла 2 шт, капуста 300 г, картофель 3 шт, мясо 500 г, лук 1 шт" rows="3"></textarea>
       <p class="hint">Формат: «название количество единица» через запятую. Единицы: г, кг, мл, л, шт.</p>
+      <div id="re_unknown_section" style="display:none; margin-top:8px; padding:10px; background:#fff3cd; border-left:4px solid #f0b400; border-radius:6px;">
+        <b>⚠️ Не распознаны в базе:</b>
+        <div id="re_unknown_list" style="margin-top:6px;"></div>
+      </div>
       <label>Шаги приготовления *</label>
       <textarea id="re_steps" placeholder="Сварить бульон&#10;Добавить овощи&#10;Варить 20 мин" rows="4"></textarea>
       <p class="hint">Каждый шаг — с новой строки.</p>
@@ -912,6 +964,64 @@ function syncUserRecipes(){
   if(!state.userRecipes)state.userRecipes={};
   Object.keys(state.userRecipes).forEach(id=>{R[id]=state.userRecipes[id];});
 }
+function getUserProduct(name) {
+  const lower = String(name).toLowerCase().trim();
+  const up = state.userProducts || {};
+  for (const key in up) {
+    if (up[key].name.toLowerCase() === lower) return { key, ...up[key] };
+  }
+  for (const key in up) {
+    const pn = up[key].name.toLowerCase();
+    if (lower === pn || lower.startsWith(pn + ' ') || lower.startsWith(pn + ',')) return { key, ...up[key] };
+  }
+  return null;
+}
+
+function resolveProduct(name) {
+  const stdKey = getCanonical(name);
+  if (stdKey && productInfo[stdKey]) {
+    return { key: stdKey, info: productInfo[stdKey], price: UNIT_PRICES[stdKey] || 0, source: 'standard' };
+  }
+  const u = getUserProduct(name);
+  if (u) {
+    return { key: u.key, info: { name: u.name, unit: u.unit, cat: u.cat, perishable: !!u.perishable }, price: u.price || 0, source: 'user' };
+  }
+  return null;
+}
+
+function makeUserProductKey(name) {
+  let base = String(name).toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+  if (!base) base = 'prod';
+  if (productInfo[base]) base = 'user_' + base;
+  let key = base, i = 2;
+  while ((state.userProducts || {})[key] || productInfo[key]) {
+    key = base + '_' + i++;
+  }
+  return key;
+}
+
+function addUserProduct(name, unit, price, cat, perishable, existingKey){
+  let key = existingKey;
+  if (!key) {
+    key = makeUserProductKey(name);
+  }
+  state.userProducts = state.userProducts || {};
+  state.userProducts[key] = {
+    name: name.trim(),
+    unit: unit || 'кг',
+    price: parseFloat(price) || 0,
+    cat: cat || 'Прочее',
+    perishable: !!perishable
+  };
+  saveState();
+  return key;
+}
+
+function deleteUserProduct(key) {
+  if (!state.userProducts) return;
+  delete state.userProducts[key];
+  saveState();
+}
 
 function openRecipeEditor(recipeId){
   const modal=document.getElementById('recipeEditor');
@@ -958,6 +1068,18 @@ function saveUserRecipe(){
   const category=document.getElementById('re_category').value;
   const existingId=document.getElementById('re_id').value;
   if(!name||!ing||!stepsText){showToast('Заполните название, ингредиенты и шаги','error');return;}
+  // Проверка нераспознанных ингредиентов
+  const unknown = [];
+  parseIngredients(ing).forEach(it=>{
+    if(it.qty===null) return;
+    if(!resolveProduct(it.name)) unknown.push(it);
+  });
+  if(unknown.length > 0){
+    renderUnknownSection(unknown);
+    showToast('Добавьте цены для '+unknown.length+' продуктов','error');
+    return;
+  }
+  document.getElementById('re_unknown_section').style.display = 'none';
   const steps=stepsText.split('\n').map(s=>s.trim()).filter(s=>s);
   const id=existingId||('user_'+Date.now());
   const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser:true};
@@ -968,6 +1090,175 @@ function saveUserRecipe(){
   if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
   if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
   if(state.menuMode==='custom'&&state.customMenu.active)build();
+}
+
+function renderUnknownSection(unknown) {
+  const sec = document.getElementById('re_unknown_section');
+  const list = document.getElementById('re_unknown_list');
+  sec.style.display = 'block';
+  list.innerHTML = unknown.map((it, i) => {
+    const units = ['кг','г','л','мл','шт','компл'];
+    const unitOpts = units.map(u => `<option value="${u}"${u===it.unit?' selected':''}>${u}</option>`).join('');
+    const cats = ['Мясо / рыба','Молочные / яйца','Крупы','Овощи','Фрукты / ягоды','Прочее'];
+    const catOpts = cats.map(c => `<option value="${c}"${c==='Прочее'?' selected':''}>${c}</option>`).join('');
+    return `<div style="display:grid; grid-template-columns:1fr 55px 70px 80px; gap:4px; margin-bottom:6px; align-items:center; padding:6px; background:#fff; border-radius:4px;" data-unk-idx="${i}">
+      <span style="font-size:13px;font-weight:600;" title="${it.name}">${it.name}</span>
+      <select class="unk-unit" style="padding:4px;font-size:12px;">${unitOpts}</select>
+      <input class="unk-price" type="number" min="0" step="1" placeholder="₽/ед" style="padding:4px;font-size:12px;text-align:right;">
+      <select class="unk-cat" style="padding:4px;font-size:11px;">${catOpts}</select>
+    </div>`;
+  }).join('') + `<button class="small" onclick="addUnknownsToDict()" style="background:#43a047;margin-top:6px;width:100%;">✅ Добавить всё в словарь</button>`;
+}
+
+function addUnknownsToDict() {
+  const rows = document.querySelectorAll('#re_unknown_list [data-unk-idx]');
+  let added = 0;
+  rows.forEach(row => {
+    const name = row.querySelector('span').textContent.trim();
+    const unit = row.querySelector('.unk-unit').value;
+    const price = parseFloat(row.querySelector('.unk-price').value) || 0;
+    const cat = row.querySelector('.unk-cat').value;
+    if (!name) return;
+    addUserProduct(name, unit, price, cat, false);
+    added++;
+  });
+  if (added > 0) {
+    showToast('✅ Добавлено в словарь: ' + added);
+    document.getElementById('re_unknown_section').style.display = 'none';
+    saveUserRecipe(); // повторно — теперь всё распознано
+  } else {
+    showToast('Заполните хотя бы один продукт', 'error');
+  }
+}
+
+function openProductEditor(keyToEdit) {
+  const modal = document.getElementById('productEditor');
+  const title = document.getElementById('productEditorTitle');
+  const delBtn = document.getElementById('pe_delete_btn');
+  if (keyToEdit && state.userProducts && state.userProducts[keyToEdit]) {
+    const p = state.userProducts[keyToEdit];
+    document.getElementById('pe_key').value = keyToEdit;
+    document.getElementById('pe_name').value = p.name;
+    document.getElementById('pe_cat').value = p.cat || 'Прочее';
+    document.getElementById('pe_unit').value = p.unit || 'кг';
+    document.getElementById('pe_price').value = p.price || 0;
+    document.getElementById('pe_perishable').value = p.perishable ? '1' : '0';
+    title.textContent = 'Редактировать продукт';
+    delBtn.style.display = 'block';
+  } else {
+    document.getElementById('pe_key').value = '';
+    document.getElementById('pe_name').value = '';
+    document.getElementById('pe_cat').value = 'Прочее';
+    document.getElementById('pe_unit').value = 'кг';
+    document.getElementById('pe_price').value = 0;
+    document.getElementById('pe_perishable').value = '0';
+    title.textContent = 'Новый продукт';
+    delBtn.style.display = 'none';
+  }
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('pe_name').focus(), 100);
+}
+
+function closeProductEditor() {
+  document.getElementById('productEditor').style.display = 'none';
+}
+
+function saveProductFromModal() {
+  const key = document.getElementById('pe_key').value;
+  const name = document.getElementById('pe_name').value.trim();
+  const cat = document.getElementById('pe_cat').value;
+  const unit = document.getElementById('pe_unit').value;
+  const price = parseFloat(document.getElementById('pe_price').value) || 0;
+  const perishable = document.getElementById('pe_perishable').value === '1';
+  if (!name) { showToast('Введите название','error'); return; }
+  if (!key) {
+    // Проверка на дубль в стандартной базе
+    const stdKey = getCanonical(name);
+    if (stdKey && productInfo[stdKey]) {
+      if (!confirm('Продукт «' + name + '» уже есть в базе как «' + productInfo[stdKey].name + '». Всё равно добавить свой?')) return;
+    }
+    const existUser = getUserProduct(name);
+    if (existUser && !confirm('У вас уже есть продукт «' + existUser.name + '». Добавить ещё один?')) return;
+  }
+  addUserProduct(name, unit, price, cat, perishable, key || null);
+  closeProductEditor();
+  renderMyProducts();
+  showToast('✅ Сохранено');
+  if (state.menuMode === 'custom' && state.customMenu.active) build();
+}
+
+function deleteFromProductModal() {
+  const key = document.getElementById('pe_key').value;
+  if (!key) return;
+  const p = state.userProducts[key];
+  if (!p) return;
+  if (!confirm('Удалить «' + p.name + '»? Он пропадёт из всех рецептов, где использовался.')) return;
+  deleteUserProduct(key);
+  closeProductEditor();
+  renderMyProducts();
+  showToast('Удалено');
+  if (state.menuMode === 'custom' && state.customMenu.active) build();
+}
+
+function renderMyProducts() {
+  const list = document.getElementById('myProductsList');
+  if (!list) return;
+  const up = state.userProducts || {};
+  const keys = Object.keys(up);
+  if (!keys.length) {
+    list.innerHTML = '<p class="hint">Пока нет своих продуктов. Добавьте тофу, скумбрию, брокколи — всё, чего нет в базе.</p>';
+    return;
+  }
+  list.innerHTML = keys.sort((a,b) => up[a].name.localeCompare(up[b].name, 'ru')).map(k => {
+    const p = up[k];
+    const priceStr = p.price ? `${p.price} ₽/${p.unit}` : 'цена не указана';
+    const perStr = p.perishable ? ' 🔴' : '';
+    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:#fafafa; border-radius:6px; margin-bottom:4px; gap:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px;font-weight:600;">${p.name}${perStr}</div>
+        <div style="font-size:11px;color:#666;">${priceStr} · ${p.cat}</div>
+      </div>
+      <button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="openProductEditor('${k}')">✏️</button>
+      <button class="small danger" style="margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="if(confirm('Удалить «${p.name}»?')){deleteUserProduct('${k}');renderMyProducts();}">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function buildStandardDict() {
+  const std = {};
+  for (const key in productInfo) {
+    const info = productInfo[key];
+    std[key] = {
+      name: info.name,
+      unit: info.unit,
+      cat: info.cat,
+      price: UNIT_PRICES[key] || 0,
+      perishable: info.perishable || false
+    };
+  }
+  return std;
+}
+
+function copyStandardDict() {
+  const std = buildStandardDict();
+  const count = Object.keys(std).length;
+  const json = JSON.stringify(std, null, 2);
+  copyText(json);
+  setTimeout(() => showToast('📋 Скопировано ' + count + ' продуктов','copied'), 100);
+}
+
+function downloadStandardDict() {
+  const std = buildStandardDict();
+  const json = JSON.stringify(std, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'zakupka-standard-dict.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  showToast('💾 Файл скачан');
 }
 
 function deleteCurrentRecipe(){
@@ -1021,10 +1312,11 @@ function convertToUnit(qty,fromUnit,toUnit){
   return qty;
 }
 
-function addCustomProduct(products,name,qty,unit,price,src){
-  const key=getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
+function addCustomProduct(products,name,qty,unit,price,src,opts){
+  opts=opts||{};
+  const key=opts.key||getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
   if(!products[key]){
-    const info=productInfo[key]||{name,unit,cat:'Прочее',perishable:false};
+    const info=opts.info||productInfo[key]||{name,unit,cat:'Прочее',perishable:false};
     const sh=SHELF[key]||['—',0];
     products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set()};
   }
@@ -1094,7 +1386,7 @@ function scaleIngredients(recipe, people) {
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{}};
 let state=loadState();
 let currentProducts={};
 function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
@@ -1112,7 +1404,7 @@ function switchTab(name){
   if(name==='recipes')renderRecipes();
   if(name==='menu')renderMenuTab();
   if(name==='diary')renderChecks();
-  if(name==='settings')updateReminderText();
+  if(name==='settings'){updateReminderText();renderMyProducts();}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1280,16 +1572,14 @@ function buildFromCustom(){
       const parsed=parseIngredients(recipe.ing);
       parsed.forEach(item=>{
         if(item.qty===null||item.qty===undefined)return;
-        const key=getCanonical(item.name);
-        if(!key)return;
-        const info=productInfo[key];
-        if(!info)return;
+        const r=resolveProduct(item.name);
+        if(!r)return;
         const scaledQty=item.qty*factor;
-        const unitPrice=UNIT_PRICES[key]||0;
-        const qtyInUnit=convertToUnit(scaledQty,item.unit,info.unit);
+        const unitPrice=r.price||0;
+        const qtyInUnit=convertToUnit(scaledQty,item.unit,r.info.unit);
         const price=unitPrice*qtyInUnit;
-        addCustomProduct(products,item.name,scaledQty,item.unit,price,'СМ');
-      });
+        addCustomProduct(products,r.info.name,scaledQty,item.unit,price,'СМ',{key:r.key,info:r.info});
+    });
     }
   }
   Object.values(products).forEach(p=>{
