@@ -976,15 +976,22 @@ function getUserProduct(name) {
   }
   return null;
 }
-
+function unitsCompatible(a, b) {
+  if (!a || !b) return true;
+  if (a === b) return true;
+  const groups = [['г','кг'],['мл','л']];
+  return groups.some(g => (a === g[0] && b === g[1]) || (a === g[1] && b === g[0]));
+}
 function resolveProduct(name) {
-  const stdKey = getCanonical(name);
-  if (stdKey && productInfo[stdKey]) {
-    return { key: stdKey, info: productInfo[stdKey], price: UNIT_PRICES[stdKey] || 0, source: 'standard' };
-  }
+  // 1. Сначала — ваши продукты (приоритет)
   const u = getUserProduct(name);
   if (u) {
     return { key: u.key, info: { name: u.name, unit: u.unit, cat: u.cat, perishable: !!u.perishable }, price: u.price || 0, source: 'user' };
+  }
+  // 2. Потом — стандартный словарь через getCanonical
+  const stdKey = getCanonical(name);
+  if (stdKey && productInfo[stdKey]) {
+    return { key: stdKey, info: productInfo[stdKey], price: UNIT_PRICES[stdKey] || 0, source: 'standard' };
   }
   return null;
 }
@@ -1072,7 +1079,13 @@ function saveUserRecipe(){
   const unknown = [];
   parseIngredients(ing).forEach(it=>{
     if(it.qty===null) return;
-    if(!resolveProduct(it.name)) unknown.push(it);
+    const r = resolveProduct(it.name);
+    if (!r) { unknown.push(it); return; }
+    // Если единицы несовместимы (шт vs кг) — считаем другим продуктом
+    if (!unitsCompatible(it.unit, r.info.unit)) {
+      const u = getUserProduct(it.name);
+      if (!u) unknown.push(it);
+    }
   });
   if(unknown.length > 0){
     renderUnknownSection(unknown);
@@ -1570,16 +1583,21 @@ function buildFromCustom(){
       });
     } else {
       const parsed=parseIngredients(recipe.ing);
-      parsed.forEach(item=>{
-        if(item.qty===null||item.qty===undefined)return;
-        const r=resolveProduct(item.name);
-        if(!r)return;
-        const scaledQty=item.qty*factor;
-        const unitPrice=r.price||0;
-        const qtyInUnit=convertToUnit(scaledQty,item.unit,r.info.unit);
-        const price=unitPrice*qtyInUnit;
-        addCustomProduct(products,r.info.name,scaledQty,item.unit,price,'СМ',{key:r.key,info:r.info});
-    });
+        parsed.forEach(item=>{
+    if(item.qty===null||item.qty===undefined)return;
+    const r=resolveProduct(item.name);
+    if(!r)return;
+    // Защита: если единицы несовместимы — пропускаем
+    if (!unitsCompatible(item.unit, r.info.unit)) {
+      console.warn('Пропущен продукт с несовместимыми единицами:', item.name, item.unit, 'vs', r.info.unit);
+      return;
+    }
+    const scaledQty=item.qty*factor;
+    const unitPrice=r.price||0;
+    const qtyInUnit=convertToUnit(scaledQty,item.unit,r.info.unit);
+    const price=unitPrice*qtyInUnit;
+    addCustomProduct(products,r.info.name,scaledQty,item.unit,price,'СМ',{key:r.key,info:r.info});
+  });
     }
   }
   Object.values(products).forEach(p=>{
