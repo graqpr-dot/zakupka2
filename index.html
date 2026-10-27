@@ -243,7 +243,17 @@
     .cm-slot-label { font-size:11px; padding-top:6px; }
     .cm-slot-controls select, .cm-slot-controls input[type="text"] { font-size:13px; padding:7px 8px; }
   }
-
+  /* Модалка создания рецепта */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:flex-end; justify-content:center; padding:0; }
+  .modal { background:#fff; border-radius:16px 16px 0 0; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  .modal-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee; position:sticky; top:0; background:#fff; z-index:1; }
+  .modal-header h2 { margin:0; font-size:16px; }
+  .modal-close { width:auto; padding:6px 12px; background:#eee; color:#333; font-size:16px; margin:0; border:none; border-radius:8px; }
+  .modal-body { padding:16px; }
+  .modal-body label { margin-top:10px; }
+  .modal-body input, .modal-body select, .modal-body textarea { width:100%; padding:10px 12px; font-size:15px; border:1px solid #ccc; border-radius:8px; margin-top:4px; font-family:inherit; }
+  .modal-body textarea { resize:vertical; min-height:70px; }
+  .modal-body .hint { margin-top:2px; }
   @media (max-width: 400px) {
     body { font-size: 14px; }
     .wrap { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
@@ -470,20 +480,45 @@
 
 <div id="toast" class="toast"></div>
 
+<div id="recipeEditor" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeRecipeEditor()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="recipeEditorTitle">Новый рецепт</h2>
+      <button class="modal-close" onclick="closeRecipeEditor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="re_id">
+      <label>Название *</label>
+      <input type="text" id="re_name" placeholder="Мамин борщ">
+      <label>Категория</label>
+      <select id="re_category">
+        <option value="lunch">Обед / Ужин</option>
+        <option value="breakfast">Завтрак</option>
+        <option value="sweet">Сладкое</option>
+        <option value="fastfood">Фастфуд</option>
+      </select>
+      <label>Базовое число порций *</label>
+      <input type="number" id="re_base" min="1" max="20" value="3">
+      <label>Время готовки</label>
+      <input type="text" id="re_time" placeholder="40 мин">
+      <label>Ингредиенты *</label>
+      <textarea id="re_ing" placeholder="свёкла 2 шт, капуста 300 г, картофель 3 шт, мясо 500 г, лук 1 шт" rows="3"></textarea>
+      <p class="hint">Формат: «название количество единица» через запятую. Единицы: г, кг, мл, л, шт.</p>
+      <label>Шаги приготовления *</label>
+      <textarea id="re_steps" placeholder="Сварить бульон&#10;Добавить овощи&#10;Варить 20 мин" rows="4"></textarea>
+      <p class="hint">Каждый шаг — с новой строки.</p>
+      <label>БЖУ на порцию (опционально)</label>
+      <input type="text" id="re_bju" placeholder="~320 ккал · Б 18 · Ж 12 · У 30">
+      <button class="alt" onclick="saveUserRecipe()" style="margin-top:14px;">💾 Сохранить</button>
+      <button class="danger" id="re_delete_btn" onclick="deleteCurrentRecipe()" style="display:none;">🗑 Удалить</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============ ДАННЫЕ: 11 МЕНЮ ============
 const menus = {
-  1:{name:"№1 — курица + рыба + творог",items:[["Курица (филе/бёдра)",1.0,"кг",400],["Фарш индейки",0.7,"кг",320],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Йогурт натуральный",0.15,"кг",70],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Вермишель",0.1,"кг",30],["Картофель",0.5,"кг",50],["Капуста",1.0,"кг",60],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
-  2:{name:"№2 — индейка + говядина + рыба",items:[["Индейка (филе/бёдра)",0.8,"кг",400],["Говядина (мякоть)",0.7,"кг",455],["Курица (бёдра/голени)",0.7,"кг",280],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",1.2,"кг",540],["Греческий йогурт",0.4,"кг",220],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Булгур",0.4,"кг",80],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Капуста",0.8,"кг",50],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.6,"кг",110],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Желатин/сахзам/корица",1,"компл",150],["Масло растит., специи",1,"компл",150]]},
-  3:{name:"№3 — бюджет: курица + минтай",items:[["Курица (бёдра/филе)",1.5,"кг",600],["Минтай заморож.",1.1,"кг",330],["Фарш куриный/индейки",0.4,"кг",180],["Творог 2–5%",0.9,"кг",405],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Рис",0.4,"кг",60],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.8,"кг",80],["Капуста",1.6,"кг",95],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.4,"кг",80],["Огурцы",0.4,"кг",70],["Заморож. овощные смеси",0.7,"кг",140],["Яблоки",1.0,"кг",100],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.3,"кг",120],["Лимон",1,"шт",30],["Томатная паста",20,"г",40],["Желатин/сахзам",1,"компл",80],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
-  4:{name:"№4 — индейка + говядина + рыба",items:[["Индейка (филе/бёдра)",0.8,"кг",400],["Говядина (мякоть)",0.7,"кг",455],["Рыба заморож.",1.1,"кг",385],["Курица/фарш для котлет",0.8,"кг",320],["Творог 2–5%",1.2,"кг",540],["Йогурт натуральный",0.2,"кг",90],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Рис",0.4,"кг",60],["Булгур",0.5,"кг",100],["Овсяные хлопья",0.4,"кг",70],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.6,"кг",110],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",150],["Масло растит., специи",1,"компл",150]]},
-  5:{name:"№5 — горбуша + курица + яйца",items:[["Горбуша/форель заморож.",0.8,"кг",375],["Курица (филе/бёдра)",1.2,"кг",480],["Минтай заморож. (котлеты)",0.8,"кг",240],["Творог 2–5%",0.6,"кг",270],["Йогурт натуральный",0.15,"кг",70],["Яйца",28,"шт",225],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.7,"кг",70],["Капуста",0.8,"кг",50],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.0,"кг",100],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
-  6:{name:"№6 — свинина + курица + рыба",items:[["Свинина (карбонад)",0.6,"кг",300],["Курица (филе/бёдра)",1.2,"кг",480],["Рыба заморож.",1.1,"кг",385],["Творог 2–5%",0.9,"кг",405],["Йогурт натуральный",0.2,"кг",90],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Вермишель",0.1,"кг",30],["Картофель",0.8,"кг",80],["Капуста",1.0,"кг",60],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
-  7:{name:"№7 — индейка + рыба + яйца",items:[["Индейка (филе/бёдра)",1.3,"кг",650],["Рыба заморож.",1.4,"кг",490],["Творог 2–5%",0.7,"кг",315],["Йогурт натуральный",0.15,"кг",70],["Яйца",28,"шт",225],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.7,"кг",70],["Капуста",0.9,"кг",55],["Морковь",0.6,"кг",50],["Лук",0.6,"кг",50],["Помидоры",0.6,"кг",120],["Огурцы",0.5,"кг",90],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.4,"кг",160],["Лимон",1,"шт",30],["Желатин/сахзам/какао",1,"компл",120],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Масло растит., специи",1,"компл",150]]},
-  8:{name:"№8 — рыбно-мясное",items:[["Говядина (мякоть)",0.7,"кг",455],["Лосось заморож.",0.8,"кг",800],["Индейка (филе/бёдра)",0.8,"кг",400],["Креветки заморож.",1.0,"кг",800],["Творог 2–5%",1.2,"кг",540],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Гречка",0.4,"кг",60],["Рис",0.5,"кг",75],["Макароны",0.3,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Помидоры",0.9,"кг",180],["Огурцы",0.5,"кг",90],["Капуста",0.8,"кг",50],["Морковь",0.7,"кг",60],["Лук",0.7,"кг",60],["Заморож. овощные смеси",1.1,"кг",220],["Шпинат заморож.",0.5,"кг",150],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.6,"кг",240],["Лимон",1,"шт",30],["Орехи",0.25,"кг",250],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.25,"л",300],["Специи",1,"компл",100]]},
-  9:{name:"№9 — с креветками и фетой",items:[["Курица (филе/бёдра)",0.7,"кг",420],["Треска/минтай заморож.",0.7,"кг",280],["Креветки заморож.",0.6,"кг",600],["Говядина (мякоть)",0.9,"кг",585],["Творог 2–5%",1.2,"кг",540],["Яйца",24,"шт",190],["Кефир",1,"л",100],["Булгур",0.4,"кг",80],["Гречка",0.5,"кг",75],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.6,"кг",60],["Морковь",0.7,"кг",60],["Лук",0.7,"кг",60],["Помидоры",0.9,"кг",180],["Огурцы",0.4,"кг",70],["Капуста",0.8,"кг",50],["Заморож. овощные смеси",1.2,"кг",240],["Шпинат заморож.",0.4,"кг",120],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.7,"кг",280],["Лимон",1,"шт",30],["Орехи",0.3,"кг",300],["Фета/брынза",0.2,"кг",330],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.35,"л",420],["Специи",1,"компл",100]]},
-  10:{name:"№10 — запекание и крупы",items:[["Курица (бёдра/голени)",0.8,"кг",320],["Треска/минтай заморож.",1.0,"кг",350],["Индейка (филе/бёдра)",1.0,"кг",500],["Творог 2–5%",1.2,"кг",540],["Яйца",20,"шт",160],["Кефир",1,"л",100],["Кускус",0.3,"кг",90],["Полба (или булгур)",0.4,"кг",130],["Овсяные хлопья",0.4,"кг",70],["Картофель",0.8,"кг",80],["Морковь",0.8,"кг",70],["Лук",0.7,"кг",60],["Помидоры",0.7,"кг",140],["Огурцы",0.4,"кг",70],["Кабачки",0.7,"кг",110],["Перец болгарский",0.6,"кг",180],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Орехи",0.2,"кг",200],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.25,"л",300],["Специи (розмарин)",1,"компл",150]]},
-  11:{name:"№11 — фольга, киноа",items:[["Говядина (мякоть)",0.7,"кг",455],["Лосось заморож.",1.0,"кг",1000],["Курица (филе/бёдра)",1.0,"кг",400],["Творог 2–5%",1.2,"кг",540],["Яйца",18,"шт",145],["Кефир",1,"л",100],["Киноа",0.3,"кг",180],["Рис",0.4,"кг",60],["Овсяные хлопья",0.4,"кг",70],["Свёкла",0.5,"кг",50],["Батат (или тыква)",0.6,"кг",120],["Морковь",0.8,"кг",70],["Лук",0.7,"кг",60],["Помидоры",0.6,"кг",120],["Огурцы",0.4,"кг",70],["Капуста",0.6,"кг",40],["Заморож. овощные смеси",1.1,"кг",220],["Яблоки",1.2,"кг",120],["Бананы",1.0,"кг",100],["Ягоды замороженные",0.5,"кг",200],["Лимон",1,"шт",30],["Орехи",0.2,"кг",200],["Горький шоколад 70%+",20,"г",50],["Хлеб",2,"шт",90],["Оливковое масло",0.35,"л",420],["Специи (паприка)",1,"компл",150]]}
+  
 };
 
 // ============ ДАННЫЕ: 7 БЛЮД ВС ============
@@ -864,9 +899,90 @@ function formatIngredients(parsed, coefficient) {
 }
 
 function pluralPeople(n) {
-  if (n === 1) return 'человек';
-  if (n >= 2 && n <= 4) return 'человека';
-  return 'человек';
+  if (n === 1) return 'чел.';
+  if (n >= 2 && n <= 4) return 'чел.';
+  return 'чел.';
+}
+function pluralPortions(n){
+  if (n === 1) return 'порцию';
+  if (n >= 2 && n <= 4) return 'порции';
+  return 'порций';
+}
+
+function syncUserRecipes(){
+  Object.keys(R).forEach(id=>{if(id.startsWith('user_'))delete R[id];});
+  if(!state.userRecipes)state.userRecipes={};
+  Object.keys(state.userRecipes).forEach(id=>{R[id]=state.userRecipes[id];});
+}
+
+function openRecipeEditor(recipeId){
+  const modal=document.getElementById('recipeEditor');
+  const title=document.getElementById('recipeEditorTitle');
+  const delBtn=document.getElementById('re_delete_btn');
+  if(recipeId){
+    const r=R[recipeId];
+    if(!r)return;
+    document.getElementById('re_id').value=recipeId;
+    document.getElementById('re_name').value=r.name;
+    document.getElementById('re_category').value=r.category||'lunch';
+    document.getElementById('re_base').value=getBasePortions(r);
+    document.getElementById('re_time').value=r.time||'';
+    document.getElementById('re_ing').value=r.ing;
+    document.getElementById('re_steps').value=(r.steps||[]).join('\n');
+    document.getElementById('re_bju').value=r.bju||'';
+    title.textContent='Редактировать рецепт';
+    delBtn.style.display='block';
+  } else {
+    document.getElementById('re_id').value='';
+    document.getElementById('re_name').value='';
+    document.getElementById('re_category').value='lunch';
+    document.getElementById('re_base').value=3;
+    document.getElementById('re_time').value='';
+    document.getElementById('re_ing').value='';
+    document.getElementById('re_steps').value='';
+    document.getElementById('re_bju').value='';
+    title.textContent='Новый рецепт';
+    delBtn.style.display='none';
+  }
+  modal.style.display='flex';
+  setTimeout(()=>document.getElementById('re_name').focus(),100);
+}
+
+function closeRecipeEditor(){document.getElementById('recipeEditor').style.display='none';}
+
+function saveUserRecipe(){
+  const name=document.getElementById('re_name').value.trim();
+  const base=Math.max(1,parseInt(document.getElementById('re_base').value)||3);
+  const time=document.getElementById('re_time').value.trim()||'30 мин';
+  const ing=document.getElementById('re_ing').value.trim();
+  const stepsText=document.getElementById('re_steps').value.trim();
+  const bju=document.getElementById('re_bju').value.trim()||'—';
+  const category=document.getElementById('re_category').value;
+  const existingId=document.getElementById('re_id').value;
+  if(!name||!ing||!stepsText){showToast('Заполните название, ингредиенты и шаги','error');return;}
+  const steps=stepsText.split('\n').map(s=>s.trim()).filter(s=>s);
+  const id=existingId||('user_'+Date.now());
+  const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser:true};
+  if(!state.userRecipes)state.userRecipes={};
+  state.userRecipes[id]=recipe;
+  saveState();syncUserRecipes();closeRecipeEditor();
+  showToast('✅ Сохранено');
+  if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
+  if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
+  if(state.menuMode==='custom'&&state.customMenu.active)build();
+}
+
+function deleteCurrentRecipe(){
+  const id=document.getElementById('re_id').value;
+  if(!id)return;
+  if(!confirm('Удалить рецепт?'))return;
+  delete state.userRecipes[id];
+  delete R[id];
+  saveState();closeRecipeEditor();
+  showToast('Удалено');
+  if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
+  if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
+  if(state.menuMode==='custom'&&state.customMenu.active)build();
 }
 // ============ СВОЁ МЕНЮ: константы ============
 const UNIT_PRICES = {
@@ -980,7 +1096,7 @@ function scaleIngredients(recipe, people) {
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{}};
 let state=loadState();
 let currentProducts={};
 function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
@@ -994,6 +1110,7 @@ function switchTab(name){
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
   document.getElementById('stickyTotal').classList.toggle('show',name==='shop');
+  if(name==='shop')build();
   if(name==='recipes')renderRecipes();
   if(name==='menu')renderMenuTab();
   if(name==='diary')renderChecks();
@@ -1255,6 +1372,7 @@ function renderCustomMenuUI(tabsBar,sched){
   const active=state.customMenu.active;
   let html=`<div class="cm-header">
     <div style="font-size:12px;color:#555;margin-bottom:6px;">Рецепты на <b>${state.people} ${pluralPeople(state.people)}</b>. Для каждого блюда укажите, на сколько дней оно готовится.</div>
+    <button class="small" onclick="openRecipeEditor()" style="background:#1976d2;margin-right:4px;">➕ Создать рецепт</button>
     <button class="small" onclick="toggleCustomActive()" style="background:${active?'#43a047':'#e85d04'};margin-right:4px;">${active?'✅ Используется в закупке':'📥 Использовать в закупке'}</button>
     <button class="small" onclick="clearCustomMenu()" style="background:#c62828;">🗑 Очистить</button>
   </div>`;
@@ -1272,6 +1390,7 @@ function renderCustomMenuUI(tabsBar,sched){
   sched.innerHTML=html;
 }
 
+
 function renderCustomSlot(d,slot,entries){
   const key=`${d}-${slot}`;
   const entry=entries[key]||{recipeId:'',days:1,customName:''};
@@ -1279,6 +1398,10 @@ function renderCustomSlot(d,slot,entries){
   const recipe=rid&&rid!=='__free__'?R[rid]:null;
   const base=recipe?getBasePortions(recipe):0;
   let opts='<option value="">— пусто —</option><option value="__free__"'+(rid==='__free__'?' selected':'')+'>✏️ Свободное блюдо</option>';
+  const myIds=Object.keys(state.userRecipes||{});
+  if(myIds.length){
+    opts+=`<optgroup label="⭐ Мои рецепты">`+myIds.map(id=>R[id]?`<option value="${id}"${rid===id?' selected':''}>${R[id].name} (мой)</option>`:'').join('')+`</optgroup>`;
+  }
   const groups=[
     {label:'Завтраки',ids:RECIPE_CATS.breakfast},
     {label:'Основные',ids:getMainRecipeIds()},
@@ -1294,10 +1417,15 @@ function renderCustomSlot(d,slot,entries){
   }
   if(recipe){
     const factor=getEntryFactor(recipe,state.people,entry.days||1);
+    let editBtn='';
+    if(rid.startsWith('user_')){
+      editBtn=`<button class="small" style="background:#1976d2;margin-left:6px;" onclick="event.stopPropagation();openRecipeEditor('${rid}')">✏️</button>`;
+    }
     controls+=`<div class="cm-days">
       <span>дней: </span>
       <input type="number" min="1" max="7" value="${entry.days||1}" onchange="setCustomCell('${key}','days',this.value)">
       <span class="cm-info">база ${base} дн. · коэф ×${formatNum(Math.round(factor*100)/100)}</span>
+      ${editBtn}
     </div>`;
   }
   return `<div class="cm-slot">
@@ -1306,12 +1434,11 @@ function renderCustomSlot(d,slot,entries){
   </div>`;
 }
 
-function setMenuMode(mode){state.menuMode=mode;saveState();renderMenuTab();if(mode==='custom'&&state.customMenu.active)build();}
+function setMenuMode(mode){state.menuMode=mode;saveState();renderMenuTab();build();}
 
 function toggleCustomActive(){
   state.customMenu.active=!state.customMenu.active;
-  saveState();renderMenuTab();
-  if(state.menuMode==='custom')build();
+  saveState();renderMenuTab();build();
   showToast(state.customMenu.active?'✅ Своё меню в закупке':'Отключено');
 }
 
@@ -1416,7 +1543,7 @@ function renderRecipe(rid){
         <h4>${r.name}</h4>
         <div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div>
       </div>
-      <span class="recipe-toggle">▼</span>
+      <div style="display:flex;gap:6px;align-items:center;">${rid.startsWith('user_')?`<button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="event.stopPropagation();openRecipeEditor('${rid}')">✏️</button>`:''}<span class="recipe-toggle">▼</span></div>
     </div>
     <div class="recipe-body">
       <div class="recipe-section"><b>Ингредиенты</b><p>${scaledIng}</p></div>
@@ -1528,7 +1655,7 @@ function importData(){
         const data=JSON.parse(ev.target.result);
         if(data.state&&typeof data.state==='object'){
           state={...DEFAULT_STATE,...data.state};
-          saveState();initUI();build();renderChecks();
+          saveState();syncUserRecipes();initUI();build();renderChecks();
           showToast('✅ Импорт успешен');
         } else throw new Error('Нет поля state');
       } catch(err){showToast('Ошибка импорта: '+err.message,'error');}
@@ -1624,6 +1751,7 @@ if('serviceWorker' in navigator){
 if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
 
 // ============ START ============
+syncUserRecipes();
 initUI();
 build();
 renderChecks();
