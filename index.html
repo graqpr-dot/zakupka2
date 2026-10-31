@@ -977,6 +977,16 @@ function syncUserRecipes(){
   if(!state.recipeOverrides)state.recipeOverrides={};
   Object.keys(state.recipeOverrides).forEach(id=>{R[id]=state.recipeOverrides[id];});
 }
+function syncMenuNames() {
+  if (!state.menuNames) state.menuNames = {};
+  for (const id in state.menuNames) {
+    if (menus[id]) {
+      // Сохраняем оригинальное название в служебное поле, если его нет
+      if (!menus[id]._origName) menus[id]._origName = menus[id].name;
+      menus[id].name = state.menuNames[id];
+    }
+  }
+}
 function getUserProduct(name) {
   const lower = String(name).toLowerCase().trim();
   const up = state.userProducts || {};
@@ -1373,11 +1383,22 @@ function convertToUnit(qty,fromUnit,toUnit){
 function addCustomProduct(products,name,qty,unit,price,src,opts){
   opts=opts||{};
   const key=opts.key||getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
+  
   if(!products[key]){
     const info=opts.info||productInfo[key]||{name,unit,cat:'Прочее',perishable:false};
     const sh=SHELF[key]||['—',0];
-    products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set()};
+    
+    // Берем магазин из своих продуктов или из сохраненных для базы
+    let store = '';
+    if (opts.info && opts.info.store) {
+        store = opts.info.store;
+    } else if (state.productStores && state.productStores[key]) {
+        store = state.productStores[key];
+    }
+
+    products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set(),store:store};
   }
+  
   let f=qty;
   if(products[key].unit==='кг'&&unit==='г')f=qty/1000;
   if(products[key].unit==='г'&&unit==='кг')f=qty*1000;
@@ -1444,7 +1465,7 @@ function scaleIngredients(recipe, people) {
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat'};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{}};
 let state=loadState();
 let currentProducts={};
 function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
@@ -1469,9 +1490,11 @@ function switchTab(name){
 // ============ ЗАКУПКА ============
 function initUI(){
   const mBox=document.getElementById('menuChecks');mBox.innerHTML='';
-  for(let id=1;id<=11;id++){
+    for(let id=1;id<=11;id++){
     const lbl=document.createElement('label');lbl.className='menu-item';
-    lbl.innerHTML=`<input type="checkbox" class="menu-cb" value="${id}" onchange="onSettingsChange()"><span class="menu-name">${menus[id].name}</span>`;
+    lbl.innerHTML=`<input type="checkbox" class="menu-cb" value="${id}" onchange="onSettingsChange()">
+      <span class="menu-name" style="flex:1;">${menus[id].name}</span>
+      <button class="small" style="background:#eee;color:#333;margin:0;padding:2px 6px;width:auto;font-size:12px;" onclick="event.preventDefault();event.stopPropagation();renameMenu(${id})">✏️</button>`;
     mBox.appendChild(lbl);
   }
   const vBox=document.getElementById('vsChecks');vBox.innerHTML='';
@@ -1503,6 +1526,32 @@ function onSettingsChange(){
   saveState();refreshChecks();build();
   if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
   if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
+}
+function renameMenu(id) {
+  const current = menus[id].name;
+  const val = prompt('Введите новое название для этого меню:', current);
+  if (val === null) return;
+  const newName = val.trim();
+  if (!newName) return;
+  
+  if (!state.menuNames) state.menuNames = {};
+  
+  if (newName === menus[id]._origName) {
+    // Если вернули оригинальное название — удаляем кастомное
+    delete state.menuNames[id];
+    menus[id].name = menus[id]._origName;
+  } else {
+    // Иначе сохраняем новое
+    state.menuNames[id] = newName;
+    menus[id].name = newName;
+  }
+  
+  saveState();
+  initUI(); // обновляем чекбоксы
+  build(); // обновляем закупку
+  renderMenuTab(); // обновляем заголовок в меню
+  renderRecipes(); // обновляем рецепты
+  showToast('✅ Название обновлено');
 }
 function setQty(key,val){const n=parseFloat(val);if(isNaN(n)||n<=0)delete state.overrides[key];else state.overrides[key]=n;saveState();updateRow(key);updateTotals();}
 function setPrice(key,val){const n=parseFloat(val);if(isNaN(n)||n<=0)delete state.prices[key];else state.prices[key]=n;saveState();updateRow(key);updateTotals();}
@@ -1686,14 +1735,35 @@ function renderProd(p,weekly){
   h+=`<div class="cell"><label>кол-во</label><div class="input-wrap${qo?' changed':''}"><input type="number" step="any" min="0" id="q_${p.key}" value="${rnd(p.q)}" onchange="setQty('${p.key}',this.value)"><span class="unit">${p.unit}</span></div></div>`;
   h+=`<div class="cell"><label>цена/${p.unit}</label><div class="input-wrap${po?' changed':''}"><input type="number" step="any" min="0" id="p_${p.key}" value="${rnd(p.up)}" onchange="setPrice('${p.key}',this.value)"><span class="unit">₽</span></div></div>`;
   h+=`<div class="cell"><label>сумма</label><div class="total" id="s_${p.key}">${fmtP(p.sum)}</div></div>`;
-  h+='</div><div class="prod-meta">';
+    h+='</div><div class="prod-meta">';
   h+=`<span class="shelf-badge ${shelfCls(p.shDays)}">${p.shText}</span>`;
-if (state.groupMode === 'cat' && p.store) h+=`<span style="font-size:10.5px;color:#1976d2;">📍 ${p.store}</span>`;
   if(weekly)h+=`<span class="perweek">${fmtQty(p.q/state.weeks,p.unit)}/нед</span>`;
+  
+  // Отображение магазина (кликабельное)
+  h+=`<span style="font-size:10.5px;color:#1976d2;cursor:pointer;text-decoration:underline;" onclick="setProductStore('${p.key}')">📍 ${p.store || 'Указать магазин'}</span>`;
+  h+='</div></div>';
   h+='</div></div>';
   return h;
 }
-
+function setProductStore(key) {
+  // Проверяем, это свой продукт или из базы
+  const isUser = state.userProducts && state.userProducts[key];
+  const current = isUser ? state.userProducts[key].store : (state.productStores[key] || '');
+  
+  const val = prompt('Введите магазин для этого продукта (например: Пятёрочка, Лента, Рынок):', current || '');
+  if (val === null) return; // отмена
+  
+  if (isUser) {
+    state.userProducts[key].store = val.trim();
+  } else {
+    state.productStores = state.productStores || {};
+    state.productStores[key] = val.trim();
+  }
+  
+  saveState();
+  build(); // перерисовываем закупку
+  showToast('Магазин сохранен');
+}
 // ============ МЕНЮ (раскладка по дням) ============
 function renderMenuTab(){
   const tabsBar=document.getElementById('menuTabsBar');
@@ -2034,7 +2104,7 @@ function importData(){
         const data=JSON.parse(ev.target.result);
         if(data.state&&typeof data.state==='object'){
           state={...DEFAULT_STATE,...data.state};
-          saveState();syncUserRecipes();initUI();build();renderChecks();
+          syncMenuNames();saveState();syncUserRecipes();initUI();build();renderChecks();
           showToast('✅ Импорт успешен');
         } else throw new Error('Нет поля state');
       } catch(err){showToast('Ошибка импорта: '+err.message,'error');}
@@ -2131,6 +2201,7 @@ if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().cat
 
 // ============ START ============
 syncUserRecipes();
+syncMenuNames();
 initUI();
 build();
 renderChecks();
