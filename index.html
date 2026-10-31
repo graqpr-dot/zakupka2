@@ -307,6 +307,13 @@
     <div class="row">
       <div><label>Человек</label><input type="number" id="peopleInput" min="1" max="20" value="2" onchange="onSettingsChange()"></div>
       <div><label>Недель</label><select id="weeksInput" onchange="onSettingsChange()"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+      <div style="margin-top:8px;">
+      <label>Группировка списка</label>
+      <select id="groupModeSelect" onchange="onGroupModeChange()">
+        <option value="cat">По отделам (Мясо, Овощи, Крупы...)</option>
+        <option value="store">По магазинам</option>
+      </select>
+    </div>
     </div>
     <button class="alt" onclick="window.print()">🖨 Сохранить PDF</button>
     <button id="installBtn" onclick="installApp()" style="display:none">📲 Установить приложение</button>
@@ -523,6 +530,8 @@
         <option value="0">Нет (хранится долго)</option>
         <option value="1">Да (молочка, зелень, хлеб)</option>
       </select>
+      <label>Магазин (для группировки)</label>
+      <input type="text" id="pe_store" placeholder="Например: Пятёрочка, Рынок, Лента"> 
       <button class="alt" onclick="saveProductFromModal()" style="margin-top:14px;">💾 Сохранить</button>
       <button class="danger" id="pe_delete_btn" onclick="deleteFromProductModal()" style="display:none;">🗑 Удалить</button>
     </div>
@@ -563,6 +572,7 @@
       <input type="text" id="re_bju" placeholder="~320 ккал · Б 18 · Ж 12 · У 30">
       <button class="alt" onclick="saveUserRecipe()" style="margin-top:14px;">💾 Сохранить</button>
       <button class="danger" id="re_delete_btn" onclick="deleteCurrentRecipe()" style="display:none;">🗑 Удалить</button>
+      <button class="alt" id="re_reset_btn" onclick="deleteCurrentRecipe()" style="display:none; background:#e85d04;">↺ Сбросить к оригиналу</button>
     </div>
   </div>
 </div>
@@ -963,6 +973,9 @@ function syncUserRecipes(){
   Object.keys(R).forEach(id=>{if(id.startsWith('user_'))delete R[id];});
   if(!state.userRecipes)state.userRecipes={};
   Object.keys(state.userRecipes).forEach(id=>{R[id]=state.userRecipes[id];});
+  
+  if(!state.recipeOverrides)state.recipeOverrides={};
+  Object.keys(state.recipeOverrides).forEach(id=>{R[id]=state.recipeOverrides[id];});
 }
 function getUserProduct(name) {
   const lower = String(name).toLowerCase().trim();
@@ -1007,7 +1020,7 @@ function makeUserProductKey(name) {
   return key;
 }
 
-function addUserProduct(name, unit, price, cat, perishable, existingKey){
+function addUserProduct(name, unit, price, cat, perishable, existingKey, store){
   let key = existingKey;
   if (!key) {
     key = makeUserProductKey(name);
@@ -1018,7 +1031,8 @@ function addUserProduct(name, unit, price, cat, perishable, existingKey){
     unit: unit || 'кг',
     price: parseFloat(price) || 0,
     cat: cat || 'Прочее',
-    perishable: !!perishable
+    perishable: !!perishable,
+    store: (store || '').trim()
   };
   saveState();
   return key;
@@ -1034,6 +1048,8 @@ function openRecipeEditor(recipeId){
   const modal=document.getElementById('recipeEditor');
   const title=document.getElementById('recipeEditorTitle');
   const delBtn=document.getElementById('re_delete_btn');
+  const resetBtn=document.getElementById('re_reset_btn'); // кнопка сброса
+  
   if(recipeId){
     const r=R[recipeId];
     if(!r)return;
@@ -1045,8 +1061,17 @@ function openRecipeEditor(recipeId){
     document.getElementById('re_ing').value=r.ing;
     document.getElementById('re_steps').value=(r.steps||[]).join('\n');
     document.getElementById('re_bju').value=r.bju||'';
-    title.textContent='Редактировать рецепт';
-    delBtn.style.display='block';
+    
+    // Проверяем: это свой рецепт или готовый
+    if (recipeId.startsWith('user_')) {
+      title.textContent='Редактировать свой рецепт';
+      if(delBtn) delBtn.style.display='block';
+      if(resetBtn) resetBtn.style.display='none';
+    } else {
+      title.textContent='Редактировать готовый рецепт';
+      if(delBtn) delBtn.style.display='none';
+      if(resetBtn) resetBtn.style.display='block';
+    }
   } else {
     document.getElementById('re_id').value='';
     document.getElementById('re_name').value='';
@@ -1057,7 +1082,8 @@ function openRecipeEditor(recipeId){
     document.getElementById('re_steps').value='';
     document.getElementById('re_bju').value='';
     title.textContent='Новый рецепт';
-    delBtn.style.display='none';
+    if(delBtn) delBtn.style.display='none';
+    if(resetBtn) resetBtn.style.display='none';
   }
   modal.style.display='flex';
   setTimeout(()=>document.getElementById('re_name').focus(),100);
@@ -1075,29 +1101,41 @@ function saveUserRecipe(){
   const category=document.getElementById('re_category').value;
   const existingId=document.getElementById('re_id').value;
   if(!name||!ing||!stepsText){showToast('Заполните название, ингредиенты и шаги','error');return;}
-  // Проверка нераспознанных ингредиентов
+  
   const unknown = [];
   parseIngredients(ing).forEach(it=>{
     if(it.qty===null) return;
     const r = resolveProduct(it.name);
     if (!r) { unknown.push(it); return; }
-    // Если единицы несовместимы (шт vs кг) — считаем другим продуктом
     if (!unitsCompatible(it.unit, r.info.unit)) {
       const u = getUserProduct(it.name);
       if (!u) unknown.push(it);
     }
   });
+  
   if(unknown.length > 0){
     renderUnknownSection(unknown);
     showToast('Добавьте цены для '+unknown.length+' продуктов','error');
     return;
   }
   document.getElementById('re_unknown_section').style.display = 'none';
+  
   const steps=stepsText.split('\n').map(s=>s.trim()).filter(s=>s);
-  const id=existingId||('user_'+Date.now());
-  const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser:true};
-  if(!state.userRecipes)state.userRecipes={};
-  state.userRecipes[id]=recipe;
+  const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser:existingId.startsWith('user_')};
+  
+  if (existingId) {
+    if (existingId.startsWith('user_')) {
+      state.userRecipes[existingId] = recipe;
+    } else {
+      if (!state.recipeOverrides) state.recipeOverrides = {};
+      state.recipeOverrides[existingId] = recipe;
+    }
+  } else {
+    const newId = 'user_'+Date.now();
+    if (!state.userRecipes) state.userRecipes = {};
+    state.userRecipes[newId] = recipe;
+  }
+  
   saveState();syncUserRecipes();closeRecipeEditor();
   showToast('✅ Сохранено');
   if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
@@ -1182,6 +1220,7 @@ function saveProductFromModal() {
   const cat = document.getElementById('pe_cat').value;
   const unit = document.getElementById('pe_unit').value;
   const price = parseFloat(document.getElementById('pe_price').value) || 0;
+  const store = document.getElementById('pe_store').value.trim();
   const perishable = document.getElementById('pe_perishable').value === '1';
   if (!name) { showToast('Введите название','error'); return; }
   if (!key) {
@@ -1193,7 +1232,7 @@ function saveProductFromModal() {
     const existUser = getUserProduct(name);
     if (existUser && !confirm('У вас уже есть продукт «' + existUser.name + '». Добавить ещё один?')) return;
   }
-  addUserProduct(name, unit, price, cat, perishable, key || null);
+  addUserProduct(name, unit, price, cat, perishable, key || null, store);
   closeProductEditor();
   renderMyProducts();
   showToast('✅ Сохранено');
@@ -1277,11 +1316,17 @@ function downloadStandardDict() {
 function deleteCurrentRecipe(){
   const id=document.getElementById('re_id').value;
   if(!id)return;
-  if(!confirm('Удалить рецепт?'))return;
-  delete state.userRecipes[id];
-  delete R[id];
-  saveState();closeRecipeEditor();
-  showToast('Удалено');
+  
+  if (id.startsWith('user_')) {
+    if(!confirm('Удалить этот рецепт?'))return;
+    delete state.userRecipes[id];
+  } else {
+    if(!confirm('Сбросить рецепт к оригинальной версии? Ваши изменения будут потеряны.'))return;
+    delete state.recipeOverrides[id];
+  }
+  
+  saveState();syncUserRecipes();closeRecipeEditor();
+  showToast('Сброшено');
   if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
   if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
   if(state.menuMode==='custom'&&state.customMenu.active)build();
@@ -1399,7 +1444,7 @@ function scaleIngredients(recipe, people) {
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat'};
 let state=loadState();
 let currentProducts={};
 function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
@@ -1488,6 +1533,11 @@ function updateWarning(){
   w.style.display=n>0?'flex':'none';
   document.getElementById('overrideCount').textContent=n;
 }
+function onGroupModeChange() {
+  state.groupMode = document.getElementById('groupModeSelect').value;
+  saveState();
+  build();
+}
 function build(){
   if(state.menuMode==='custom'){
     buildFromCustom();
@@ -1526,6 +1576,9 @@ function build(){
   currentProducts=products;
 
   const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
+  const groupList = state.groupMode === 'store' 
+    ? [...new Set(Object.values(products).map(p => p.store || p.cat))].sort()
+    : cats;
   const long=[],weekly=[];
   Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
 
@@ -1635,6 +1688,7 @@ function renderProd(p,weekly){
   h+=`<div class="cell"><label>сумма</label><div class="total" id="s_${p.key}">${fmtP(p.sum)}</div></div>`;
   h+='</div><div class="prod-meta">';
   h+=`<span class="shelf-badge ${shelfCls(p.shDays)}">${p.shText}</span>`;
+if (state.groupMode === 'cat' && p.store) h+=`<span style="font-size:10.5px;color:#1976d2;">📍 ${p.store}</span>`;
   if(weekly)h+=`<span class="perweek">${fmtQty(p.q/state.weeks,p.unit)}/нед</span>`;
   h+='</div></div>';
   return h;
@@ -1821,35 +1875,54 @@ function renderRecipes(){
     list.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
     return;
   }
-  const header=`<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты на ${state.people} ${pluralPeople(state.people)}.</b> Ингредиенты умножены на ${state.people}.</div>`;
+  const header=`<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты на ${state.people} ${pluralPeople(state.people)}.</b> Ингредиенты точно соответствуют закупке (пересчитаны на количество дней в меню).</div>`;
   let html=header;
   state.menus.forEach(id=>{
     const rIds=menuRecipes[id]||[];
     if(!rIds.length)return;
+    
+    // Считаем, сколько раз каждый рецепт встречается в этом меню
+    const cnt = {};
+    const days = scheduleData[id] || [];
+    for (const day of days) for (const slot of ['breakfast','lunch','dinner','sweet']) {
+      const m = day[slot];
+      if (m && m.recipe) cnt[m.recipe] = (cnt[m.recipe]||0)+1;
+    }
+    
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${menus[id].name}</div>`;
-    rIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid);});
+    rIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid, cnt[rid]||1);});
     html+='</div>';
   });
   if(state.vs.length){
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">🍔 Блюдо на ВС</div>`;
-    state.vs.forEach(id=>{const rid=vsRecipes[id];if(rid&&R[rid])html+=renderRecipe(rid);});
+    state.vs.forEach(id=>{const rid=vsRecipes[id];if(rid&&R[rid])html+=renderRecipe(rid, 1);});
     html+='</div>';
   }
   list.innerHTML=html;
 }
-function renderRecipe(rid){
+function renderRecipe(rid, occurrences){
+  occurrences = occurrences || 1;
   const r=R[rid];
   if(!r)return '';
   const rWithId={...r,_id:rid};
-  const scaledIng=scaleIngredients(rWithId,state.people);
-  const displayFor=`на ${state.people} ${pluralPeople(state.people)}`;
+  const base = getBasePortions(r);
+  const factor = state.people * (occurrences / base);
+  
+  // Используем функцию, которая считает точно так же, как закупка
+  const scaledIng = scaleIngredientsForEntry(rWithId, state.people, occurrences);
+  
+  let displayFor = `на ${state.people} ${pluralPeople(state.people)}`;
+  if (Math.abs(occurrences - base) > 0.1) {
+    displayFor += ` · ×${formatNum(Math.round(factor*100)/100)}`;
+  }
+
   return `<div class="recipe" onclick="toggleRecipe(this)">
     <div class="recipe-head">
       <div>
         <h4>${r.name}</h4>
         <div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;">${rid.startsWith('user_')?`<button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="event.stopPropagation();openRecipeEditor('${rid}')">✏️</button>`:''}<span class="recipe-toggle">▼</span></div>
+      <div style="display:flex;gap:6px;align-items:center;"><button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="event.stopPropagation();openRecipeEditor('${rid}')">✏️</button><span class="recipe-toggle">▼</span></div>
     </div>
     <div class="recipe-body">
       <div class="recipe-section"><b>Ингредиенты</b><p>${scaledIng}</p></div>
