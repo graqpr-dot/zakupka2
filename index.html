@@ -1648,9 +1648,10 @@ function build(){
     return;
   }
   if(!state.menus.length&&!state.vs.length){
-    document.getElementById('result').innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
-    updateTotals();return;
-  }
+  currentProducts = {};   // ← добавлено
+  document.getElementById('result').innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
+  updateTotals();return;
+}
   const products={};
   function add(name,qty,unit,price,src){
     const key=getCanonical(name)||name.toLowerCase().replace(/[^a-zа-я0-9]/g,'');
@@ -2134,7 +2135,8 @@ function updateCompare(){
   const block=document.getElementById('compareBlock');if(!block)return;
   let plan=0;Object.values(currentProducts).forEach(p=>plan+=p.sum);
   let fact=state.checks.reduce((s,c)=>s+c.sum,0);
-  if(!state.checks.length&&plan===0){block.innerHTML='';return;}
+  if(plan === 0){ block.innerHTML=''; return; }   // ← скрываем, если плана нет
+  if(!state.checks.length && plan === 0){ block.innerHTML=''; return; }
   const diff=fact-plan;
   const cls=diff>0?'diff-pos':diff<0?'diff-neg':'';
   block.innerHTML=`<div class="compare"><div class="compare-cell"><span>План</span><b>${fmtP(plan)}</b></div><div class="compare-cell"><span>Факт</span><b>${fmtP(fact)}</b></div><div class="compare-cell ${cls}"><span>Разница</span><b>${diff>=0?'+':''}${Math.round(diff)} ₽</b></div></div>`;
