@@ -321,11 +321,13 @@
     <div id="vsChecks"></div>
   </details>
   <div class="warning" id="overrideWarning" style="display:none;">
-  ⚠️ Правок: <b id="overrideCount">0</b>
-  <span style="font-size:11px;color:#666;width:100%;">Правки применяются ко всем меню.</span>
-  <button class="small" onclick="resetOverrides()">Кол-во</button>
-  <button class="small" onclick="resetPrices()">Цены</button>
-</div>
+    ⚠️ Правок: <b id="overrideCount">0</b>
+    <span style="font-size:11px;color:#666;width:100%;">
+      Правки применяются ко всем меню. Правки на продукты, которых нет в текущей закупке, удаляются автоматически.
+    </span>
+    <button class="small" onclick="resetOverrides()">Кол-во</button>
+    <button class="small" onclick="resetPrices()">Цены</button>
+  </div>
   <div id="result"></div>
 </div>
 
@@ -1369,12 +1371,13 @@ const SLOT_NAMES = {breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин
 const SLOT_ICONS = {breakfast:'🌅',lunch:'🍽',dinner:'🌙',sweet:'🍰'};
 
 function recipeIdsByCategory(cat){
+  const norm = c => (c === 'sweet' ? 'dessert' : c);   // ← 'sweet' из редактора = 'dessert'
   const isUser = rid => rid.startsWith('user_');
   const ids = Object.keys(R);
   return ids.filter(rid => {
     const r = R[rid];
-    if (isUser(rid)) return (r.category || 'lunch') === cat;
-    if (r.category) return r.category === cat;  // категория из override
+    if (isUser(rid)) return norm(r.category || 'lunch') === cat;
+    if (r.category) return norm(r.category) === cat;   // категория из override
     if (cat === 'breakfast') return RECIPE_CATS.breakfast.includes(rid);
     if (cat === 'dessert')   return RECIPE_CATS.dessert.includes(rid);
     if (cat === 'fastfood')  return RECIPE_CATS.fastfood.includes(rid);
@@ -1468,7 +1471,24 @@ function hasCustomEntries(){
 const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{}};
 let state=loadState();
 let currentProducts={};
-function loadState(){try{const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));if(s)return{...DEFAULT_STATE,...s};}catch(e){}return{...DEFAULT_STATE};}
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem('calc_pwa_v4'));
+    if(s){
+      const merged = {...DEFAULT_STATE, ...s};
+      // страховка от «null» в ключевых полях после импорта/ручной правки
+      ['overrides','prices','checks','menus','vs','userRecipes','userProducts','recipeOverrides','productStores','menuNames'].forEach(k=>{
+        if(merged[k] == null) merged[k] = (k in DEFAULT_STATE && typeof DEFAULT_STATE[k] === 'object')
+          ? (Array.isArray(DEFAULT_STATE[k]) ? [] : {})
+          : merged[k];
+      });
+      if(!merged.customMenu || typeof merged.customMenu !== 'object') merged.customMenu = {active:false,entries:{}};
+      if(!merged.customMenu.entries || typeof merged.customMenu.entries !== 'object') merged.customMenu.entries = {};
+      return merged;
+    }
+  }catch(e){}
+  return {...DEFAULT_STATE};
+}
 function saveState(){try{localStorage.setItem('calc_pwa_v4',JSON.stringify(state));}catch(e){}}
 let toastTimer;
 function showToast(txt,cls){const el=document.getElementById('toast');el.textContent=txt;el.className='toast show'+(cls?' '+cls:'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1600);}
@@ -1668,9 +1688,10 @@ function build(){
 currentProducts = products;
 // чистим override/цены для продуктов, которых больше нет в закупке
 const validKeys = new Set(Object.keys(products));
-Object.keys(state.overrides).forEach(k => { if (!validKeys.has(k)) delete state.overrides[k]; });
-Object.keys(state.prices).forEach(k => { if (!validKeys.has(k)) delete state.prices[k]; });
-
+let cleaned = false;
+Object.keys(state.overrides).forEach(k => { if (!validKeys.has(k)) { delete state.overrides[k]; cleaned = true; } });
+Object.keys(state.prices).forEach(k => { if (!validKeys.has(k)) { delete state.prices[k]; cleaned = true; } });
+if (cleaned) saveState();   // ← фиксируем в localStorage
   const long=[],weekly=[];
   Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
 
@@ -1840,8 +1861,18 @@ function renderPresetMenuUI(tabsBar,sched){
 function renderCustomMenuUI(tabsBar,sched){
   const switchHtml=`<button class="menu-tab-btn" onclick="setMenuMode('preset')" style="margin-right:6px;">📋 Готовые</button><button class="menu-tab-btn" onclick="setMenuMode('custom')" style="background:#1976d2;color:#fff;">✏️ Своё</button>`;
   tabsBar.innerHTML=switchHtml;
-  const entries=state.customMenu.entries||{};
-  const active=state.customMenu.active;
+const entries=state.customMenu.entries||{};
+// чистим ссылки на удалённые рецепты
+let fixed = false;
+for (const k in entries) {
+  const e = entries[k];
+  if (e && e.recipeId && e.recipeId !== '__free__' && !R[e.recipeId]) {
+    e.recipeId = '';
+    fixed = true;
+  }
+}
+if (fixed) saveState();
+const active=state.customMenu.active;
   const empty = !hasCustomEntries();
   const activeLabel = active
   ? (empty ? '⚠️ Активно, но пусто' : '✅ Используется в закупке')
@@ -1917,7 +1948,16 @@ function toggleCustomActive(){
   saveState();renderMenuTab();build();
   showToast(state.customMenu.active?'✅ Своё меню в закупке':'Отключено');
 }
-
+function clearCustomMenu(){
+  if(!state.customMenu || !state.customMenu.entries) return;
+  if(!hasCustomEntries()) { showToast('И так пусто'); return; }
+  if(!confirm('Очистить всё своё меню? Рецепты останутся, удалятся только назначения по дням.')) return;
+  state.customMenu.entries = {};
+  saveState();
+  renderMenuTab();
+  build();
+  showToast('🗑 Своё меню очищено');
+}
 function setCustomCell(key,field,value){
   if(!state.customMenu) state.customMenu = {active:false,entries:{}};
   if(!state.customMenu.entries) state.customMenu.entries = {};
@@ -2156,7 +2196,12 @@ function importData(){
         const data=JSON.parse(ev.target.result);
         if(data.state&&typeof data.state==='object'){
           state={...DEFAULT_STATE,...data.state};
-          syncMenuNames();saveState();syncUserRecipes();initUI();build();renderChecks();
+          ['overrides','prices','checks','menus','vs','userRecipes','userProducts','recipeOverrides','productStores','menuNames'].forEach(k=>{
+        if(state[k] == null) state[k] = Array.isArray(DEFAULT_STATE[k]) ? [] : {};
+});
+        if(!state.customMenu || typeof state.customMenu !== 'object') state.customMenu = {active:false,entries:{}};
+        if(!state.customMenu.entries || typeof state.customMenu.entries !== 'object') state.customMenu.entries = {};
+        syncMenuNames();saveState();syncUserRecipes();initUI();build();renderChecks();               
           if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
           if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
           showToast('✅ Импорт успешен');
