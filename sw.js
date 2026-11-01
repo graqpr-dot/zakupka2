@@ -1,9 +1,11 @@
-const CACHE = 'zakupka-v18';
+const CACHE = 'zakupka-v19';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(c => Promise.allSettled(ASSETS.map(url => c.add(url))))
+      .then(() => self.skipWaiting())
   );
 });
 

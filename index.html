@@ -107,7 +107,6 @@
   details summary::after { content: '▼'; font-size: 11px; color: #888; }
   details[open] summary::after { content: '▲'; }
 
-  /* Табы — 6 штук */
   .tabs {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: #fff; border-top: 1px solid #ddd;
@@ -144,7 +143,6 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
-  /* Меню по дням */
   .day-card { background: #fff; border-radius: 12px; padding: 0; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #e85d04; }
   .day-header { padding: 10px 14px; background: #fff3e0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
   .day-header h3 { margin: 0; font-size: 15px; color: #a0522d; }
@@ -169,7 +167,6 @@
   .menu-tab-btn { padding: 8px 14px; border-radius: 20px; background: #f0f0f0; color: #555; border: none; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; margin: 0; width: auto; }
   .menu-tab-btn.active { background: #e85d04; color: #fff; }
 
-  /* Рецепты */
   .recipe { background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 3px solid #e85d04; }
   .recipe-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; cursor: pointer; user-select: none; }
   .recipe-head h4 { margin: 0; font-size: 14px; }
@@ -187,7 +184,6 @@
   .menu-recipe-group { margin-bottom: 16px; }
   .menu-recipe-title { font-size: 14px; font-weight: 700; color: #333; margin: 12px 0 8px 0; padding: 8px 12px; background: #f0f0f0; border-radius: 8px; }
 
-  /* Замены */
   .swap-section { margin-bottom: 16px; }
   .swap-section h3 { font-size: 15px; margin: 0 0 8px 0; padding: 10px 14px; background: #e8f5e9; color: #1b5e20; border-radius: 8px; border-left: 4px solid #43a047; }
   .swap-section.protein h3 { background: #e3f2fd; color: #0d47a1; border-left-color: #1976d2; }
@@ -208,7 +204,6 @@
   .swap-card .desc { font-size: 12px; color: #555; }
   .swap-card .extra { font-size: 11px; color: #888; margin-top: 3px; }
 
-  /* Дневник */
   .check-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #fff; border-radius: 8px; margin-bottom: 6px; border: 1px solid #eee; }
   .check-item .info { flex: 1; min-width: 0; }
   .check-item .date { font-size: 11px; color: #888; }
@@ -243,7 +238,6 @@
     .cm-slot-label { font-size:11px; padding-top:6px; }
     .cm-slot-controls select, .cm-slot-controls input[type="text"] { font-size:13px; padding:7px 8px; }
   }
-  /* Модалка создания рецепта */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; display:flex; align-items:flex-end; justify-content:center; padding:0; }
   .modal { background:#fff; border-radius:16px 16px 0 0; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
   .modal-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee; position:sticky; top:0; background:#fff; z-index:1; }
@@ -327,10 +321,11 @@
     <div id="vsChecks"></div>
   </details>
   <div class="warning" id="overrideWarning" style="display:none;">
-    ⚠️ Правок: <b id="overrideCount">0</b>
-    <button class="small" onclick="resetOverrides()">Кол-во</button>
-    <button class="small" onclick="resetPrices()">Цены</button>
-  </div>
+  ⚠️ Правок: <b id="overrideCount">0</b>
+  <span style="font-size:11px;color:#666;width:100%;">Правки применяются ко всем меню.</span>
+  <button class="small" onclick="resetOverrides()">Кол-во</button>
+  <button class="small" onclick="resetPrices()">Цены</button>
+</div>
   <div id="result"></div>
 </div>
 
@@ -701,7 +696,7 @@ const R = {
   "hotdog":{name:"Хот-дог с индейкой + картофель",time:"25 мин",for:"ВС · 1 порция (×N)",ing:"булочка, сосиска 80 г, сыр 15 г, огурец, горчица, картофель 200 г",steps:["Картофель запечь","Сосиску отварить","Булочку подсушить","Собрать"],bju:"~650 ккал · Б 25 · Ж 28 · У 70"},
   "naggetsy":{name:"Наггетсы + картофельное пюре",time:"35 мин",for:"ВС · 1 порция (×N)",ing:"курица 150 г, яйцо 1, панировка 30 г, картофель 200 г, молоко 50 мл, масло сливочное",steps:["Курицу в яйцо → панировка","200 °C 15–20 мин","Картофель отварить, пюре","Подавать с соусом"],bju:"~700 ккал · Б 38 · Ж 25 · У 70"}
 };
-
+const R_ORIG = JSON.parse(JSON.stringify(R));   // ← ДОБАВИТЬ
 // ============ ПРИВЯЗКА РЕЦЕПТОВ К МЕНЮ ============
 const menuRecipes = {
   1:["grechka-kuritsa","kuriny-sup","ris-farsh","ryba-zapechen","ovsyanka-kefir","yabloko-tvorog","pp-zhele","tvorozh-muss","frukt-salad"],
@@ -775,7 +770,7 @@ const scheduleData = {
     {breakfast:{name:"Творог + банан"},lunch:{name:"Рис с курицей",recipe:"ris-kuritsa"},dinner:{name:"Рыба с овощами",recipe:"ryba-zapechen"},sweet:{name:"Творожный мусс",recipe:"tvorozh-muss"}}
   ],
   7:[
-    {breakfast:{name:"2 яйца + огурец + хлеб"},lunch:{name:"Гречка с индейкой",recipe:"grechka-indeyka"},dinner:{name:"Запечённая рыба",recipe:"ryba-zapechen"},sweet:{name:"Запечённое яблоко",recipe:"yabloko-tvorog"}},
+    {breakfast:{name:"2 яйца + огурец + хлеб"},lunch:{name:"Гречка с индейкой",recipe:"grechka-indeyka"},dinner:{name:"Запечённая рыба",recipe:"ryba-zapechen"},sweet:{name:"Запечённое яблокко",recipe:"yabloko-tvorog"}},
     {breakfast:{name:"Овсянка на кефире + яблоко",recipe:"ovsyanka-kefir"},lunch:{name:"Гречка с индейкой",recipe:"grechka-indeyka"},dinner:{name:"Рыба с овощами",recipe:"ryba-zapechen"},sweet:{name:"ПП-желе",recipe:"pp-zhele"}},
     {breakfast:{name:"Творог + банан"},lunch:{name:"Гречка с индейкой",recipe:"grechka-indeyka"},dinner:{name:"Рыба с овощами",recipe:"ryba-zapechen"},sweet:{name:"Творожный мусс",recipe:"tvorozh-muss"}},
     {breakfast:{name:"2 яйца + помидор"},lunch:{name:"Рис с индейкой",recipe:"ris-indeyka"},dinner:{name:"Омлет с овощами и рыбой",recipe:"omlet-ryba"},sweet:{name:"15 г шоколада"}},
@@ -900,13 +895,18 @@ function fmtQty(q,u){
   return q+" "+u;
 }
 function fmtP(p){return Math.round(p).toLocaleString('ru-RU')+' ₽';}
+function escHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
 function shelfCls(d){return d<7?'shelf-vshort':d<15?'shelf-short':d<30?'shelf-medium':d<90?'shelf-long':'shelf-vlong';}
 function rnd(q){return q>=10?Math.round(q):q>=1?Math.round(q*10)/10:Math.round(q*100)/100;}
 // ============ ПЕРЕСЧЁТ ИНГРЕДИЕНТОВ ПО ЛЮДЯМ ============
 function parseIngredients(str) {
   if (!str) return [];
   const prepared = str.replace(/(\d),(\d)/g, '$1.$2');
-  const items = prepared.split(/,\s+/);
+  const items = prepared.split(/\s*,\s*/);
   return items.map(item => {
     const m = item.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(г|кг|мл|л|шт|компл)\.?(?:\s+(.*))?$/);
     if (m) {
@@ -943,25 +943,11 @@ function formatNum(n) {
   return n.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
 }
 
-function formatCoef(c) {
-  if (Number.isInteger(c)) return c.toString();
-  return c.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
-}
-
-function formatIngredients(parsed, coefficient) {
-  return parsed.map(item => {
-    if (item.qty === null || item.qty === undefined) return item.raw;
-    const scaled = item.qty * coefficient;
-    const rounded = roundQty(scaled, item.unit);
-    const suffix = item.suffix ? ' ' + item.suffix : '';
-    return `${item.name} ${formatNum(rounded)} ${item.unit}${suffix}`;
-  }).join(', ');
-}
-
 function pluralPeople(n) {
-  if (n === 1) return 'чел.';
-  if (n >= 2 && n <= 4) return 'чел.';
-  return 'чел.';
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'человек';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'человека';
+  return 'человек';
 }
 function pluralPortions(n){
   if (n === 1) return 'порцию';
@@ -970,20 +956,25 @@ function pluralPortions(n){
 }
 
 function syncUserRecipes(){
-  Object.keys(R).forEach(id=>{if(id.startsWith('user_'))delete R[id];});
-  if(!state.userRecipes)state.userRecipes={};
-  Object.keys(state.userRecipes).forEach(id=>{R[id]=state.userRecipes[id];});
-  
-  if(!state.recipeOverrides)state.recipeOverrides={};
-  Object.keys(state.recipeOverrides).forEach(id=>{R[id]=state.recipeOverrides[id];});
+  // 1) сбрасываем R к оригиналу
+  for (const id in R_ORIG) R[id] = JSON.parse(JSON.stringify(R_ORIG[id]));
+  // 2) чистим user-рецепты
+  Object.keys(R).forEach(id => { if (id.startsWith('user_')) delete R[id]; });
+  // 3) применяем userRecipes
+  if (!state.userRecipes) state.userRecipes = {};
+  Object.keys(state.userRecipes).forEach(id => { R[id] = state.userRecipes[id]; });
+  // 4) применяем override
+  if (!state.recipeOverrides) state.recipeOverrides = {};
+  Object.keys(state.recipeOverrides).forEach(id => { R[id] = state.recipeOverrides[id]; });
 }
 function syncMenuNames() {
   if (!state.menuNames) state.menuNames = {};
-  for (const id in state.menuNames) {
-    if (menus[id]) {
-      // Сохраняем оригинальное название в служебное поле, если его нет
-      if (!menus[id]._origName) menus[id]._origName = menus[id].name;
+  for (const id in menus) {
+    if (!menus[id]._origName) menus[id]._origName = menus[id].name;
+    if (state.menuNames[id]) {
       menus[id].name = state.menuNames[id];
+    } else {
+      menus[id].name = menus[id]._origName;
     }
   }
 }
@@ -993,7 +984,9 @@ function getUserProduct(name) {
   for (const key in up) {
     if (up[key].name.toLowerCase() === lower) return { key, ...up[key] };
   }
-  for (const key in up) {
+  // Более специфичные (длинные) имена — приоритетнее
+  const keys = Object.keys(up).sort((a,b) => up[b].name.length - up[a].name.length);
+  for (const key of keys) {
     const pn = up[key].name.toLowerCase();
     if (lower === pn || lower.startsWith(pn + ' ') || lower.startsWith(pn + ',')) return { key, ...up[key] };
   }
@@ -1009,7 +1002,7 @@ function resolveProduct(name) {
   // 1. Сначала — ваши продукты (приоритет)
   const u = getUserProduct(name);
   if (u) {
-    return { key: u.key, info: { name: u.name, unit: u.unit, cat: u.cat, perishable: !!u.perishable }, price: u.price || 0, source: 'user' };
+        return { key: u.key, info: { name: u.name, unit: u.unit, cat: u.cat, perishable: !!u.perishable, store: u.store || '' }, price: u.price || 0, source: 'user' };
   }
   // 2. Потом — стандартный словарь через getCanonical
   const stdKey = getCanonical(name);
@@ -1051,6 +1044,7 @@ function addUserProduct(name, unit, price, cat, perishable, existingKey, store){
 function deleteUserProduct(key) {
   if (!state.userProducts) return;
   delete state.userProducts[key];
+  if (state.productStores) delete state.productStores[key];
   saveState();
 }
 
@@ -1131,7 +1125,8 @@ function saveUserRecipe(){
   document.getElementById('re_unknown_section').style.display = 'none';
   
   const steps=stepsText.split('\n').map(s=>s.trim()).filter(s=>s);
-  const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser:existingId.startsWith('user_')};
+  const isUser = !existingId || existingId.startsWith('user_');
+  const recipe={name,time,for:`на ${base} ${pluralPortions(base)} · ${time}`,ing,steps,bju,category,isUser};
   
   if (existingId) {
     if (existingId.startsWith('user_')) {
@@ -1163,7 +1158,7 @@ function renderUnknownSection(unknown) {
     const cats = ['Мясо / рыба','Молочные / яйца','Крупы','Овощи','Фрукты / ягоды','Прочее'];
     const catOpts = cats.map(c => `<option value="${c}"${c==='Прочее'?' selected':''}>${c}</option>`).join('');
     return `<div style="display:grid; grid-template-columns:1fr 55px 70px 80px; gap:4px; margin-bottom:6px; align-items:center; padding:6px; background:#fff; border-radius:4px;" data-unk-idx="${i}">
-      <span style="font-size:13px;font-weight:600;" title="${it.name}">${it.name}</span>
+      <span style="font-size:13px;font-weight:600;" title="${escHtml(it.name)}">${escHtml(it.name)}</span>
       <select class="unk-unit" style="padding:4px;font-size:12px;">${unitOpts}</select>
       <input class="unk-price" type="number" min="0" step="1" placeholder="₽/ед" style="padding:4px;font-size:12px;text-align:right;">
       <select class="unk-cat" style="padding:4px;font-size:11px;">${catOpts}</select>
@@ -1204,6 +1199,7 @@ function openProductEditor(keyToEdit) {
     document.getElementById('pe_unit').value = p.unit || 'кг';
     document.getElementById('pe_price').value = p.price || 0;
     document.getElementById('pe_perishable').value = p.perishable ? '1' : '0';
+    document.getElementById('pe_store').value = p.store || '';
     title.textContent = 'Редактировать продукт';
     delBtn.style.display = 'block';
   } else {
@@ -1213,6 +1209,7 @@ function openProductEditor(keyToEdit) {
     document.getElementById('pe_unit').value = 'кг';
     document.getElementById('pe_price').value = 0;
     document.getElementById('pe_perishable').value = '0';
+    document.getElementById('pe_store').value = '';
     title.textContent = 'Новый продукт';
     delBtn.style.display = 'none';
   }
@@ -1277,13 +1274,22 @@ function renderMyProducts() {
     const perStr = p.perishable ? ' 🔴' : '';
     return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:#fafafa; border-radius:6px; margin-bottom:4px; gap:6px;">
       <div style="flex:1; min-width:0;">
-        <div style="font-size:13px;font-weight:600;">${p.name}${perStr}</div>
-        <div style="font-size:11px;color:#666;">${priceStr} · ${p.cat}</div>
+        <div style="font-size:13px;font-weight:600;">${escHtml(p.name)}${perStr}</div>
+        <div style="font-size:11px;color:#666;">${escHtml(priceStr)} · ${escHtml(p.cat)}</div>
       </div>
-      <button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="openProductEditor('${k}')">✏️</button>
-      <button class="small danger" style="margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="if(confirm('Удалить «${p.name}»?')){deleteUserProduct('${k}');renderMyProducts();}">✕</button>
+      <button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" data-key="${escHtml(k)}" onclick="openProductEditor(this.dataset.key)">✏️</button>
+      <button class="small danger" style="margin:0;width:auto;padding:4px 8px;font-size:12px;" data-key="${escHtml(k)}" onclick="delUserProductConfirm(this.dataset.key)">✕</button>
     </div>`;
   }).join('');
+}
+
+function delUserProductConfirm(key) {
+  const p = (state.userProducts || {})[key];
+  if (!p) return;
+  if (!confirm('Удалить «' + p.name + '»?')) return;
+  deleteUserProduct(key);
+  renderMyProducts();
+  if (state.menuMode === 'custom' && state.customMenu.active) build();
 }
 
 function buildStandardDict() {
@@ -1306,7 +1312,8 @@ function copyStandardDict() {
   const count = Object.keys(std).length;
   const json = JSON.stringify(std, null, 2);
   copyText(json);
-  setTimeout(() => showToast('📋 Скопировано ' + count + ' продуктов','copied'), 100);
+  // copyText уже показывает «✓ Скопировано» — дополнительный тост не нужен
+  void count;
 }
 
 function downloadStandardDict() {
@@ -1361,13 +1368,28 @@ const RECIPE_CATS = {
 const SLOT_NAMES = {breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',sweet:'Сладкое'};
 const SLOT_ICONS = {breakfast:'🌅',lunch:'🍽',dinner:'🌙',sweet:'🍰'};
 
-function getMainRecipeIds(){
-  const exclude=new Set([...RECIPE_CATS.breakfast,...RECIPE_CATS.dessert,...RECIPE_CATS.fastfood]);
-  return Object.keys(R).filter(rid=>!exclude.has(rid));
+function recipeIdsByCategory(cat){
+  const isUser = rid => rid.startsWith('user_');
+  const ids = Object.keys(R);
+  return ids.filter(rid => {
+    const r = R[rid];
+    if (isUser(rid)) return (r.category || 'lunch') === cat;
+    if (r.category) return r.category === cat;  // категория из override
+    if (cat === 'breakfast') return RECIPE_CATS.breakfast.includes(rid);
+    if (cat === 'dessert')   return RECIPE_CATS.dessert.includes(rid);
+    if (cat === 'fastfood')  return RECIPE_CATS.fastfood.includes(rid);
+    if (cat === 'lunch') {
+      return !RECIPE_CATS.breakfast.includes(rid)
+          && !RECIPE_CATS.dessert.includes(rid)
+          && !RECIPE_CATS.fastfood.includes(rid);
+    }
+    return false;
+  });
 }
 
 function getBasePortions(recipe){
-  const m=String(recipe.for).match(/(\d+)\s+порци/);
+  // ловит «3 порции», «3–4 порции», «на 3 порции» — берёт первое число
+  const m=String(recipe.for).match(/(\d+)(?:\s*[–\-]\s*\d+)?\s+порци/);
   return m?parseInt(m[1]):1;
 }
 
@@ -1412,13 +1434,16 @@ function addCustomProduct(products,name,qty,unit,price,src,opts){
 function scaleIngredientsForEntry(recipe,people,days){
   const base=getBasePortions(recipe);
   const factor=people*(days/base);
-  for(const vsId in vsRecipes){
-    if(vsRecipes[vsId]===recipe._id){
-      const vs=vsData[vsId];
-      if(vs)return vs.items.map(([name,qty,unit])=>{
-        const scaled=qty*factor;
-        return `${name} ${formatNum(roundQty(scaled,unit))} ${unit}`;
-      }).join(', ');
+  const hasOverride = state.recipeOverrides && state.recipeOverrides[recipe._id];
+  if(!hasOverride){
+    for(const vsId in vsRecipes){
+      if(vsRecipes[vsId]===recipe._id){
+        const vs=vsData[vsId];
+        if(vs)return vs.items.map(([name,qty,unit])=>{
+          const scaled=qty*factor;
+          return `${name} ${formatNum(roundQty(scaled,unit))} ${unit}`;
+        }).join(', ');
+      }
     }
   }
   const parsed=parseIngredients(recipe.ing);
@@ -1437,31 +1462,6 @@ function getEntryFactor(recipe,people,days){
 function hasCustomEntries(){
   if(!state.customMenu||!state.customMenu.entries)return false;
   return Object.values(state.customMenu.entries).some(e=>e&&e.recipeId&&e.recipeId!=='__free__');
-}
-
-function scaleIngredients(recipe, people) {
-  // Рецепт ВС — берём структурированные ингредиенты
-  for (const vsId in vsRecipes) {
-    if (vsRecipes[vsId] === recipe._id) {
-      const vs = vsData[vsId];
-      if (vs) {
-        return vs.items.map(([name, qty, unit]) => {
-          const scaled = qty * people;
-          const rounded = roundQty(scaled, unit);
-          return `${name} ${formatNum(rounded)} ${unit}`;
-        }).join(', ');
-      }
-    }
-  }
-  // Обычный рецепт — умножаем каждый ингредиент на число людей
-  const parsed = parseIngredients(recipe.ing);
-  return parsed.map(item => {
-    if (item.qty === null || item.qty === undefined) return item.raw;
-    const scaled = item.qty * people;
-    const rounded = roundQty(scaled, item.unit);
-    const suffix = item.suffix ? ' ' + item.suffix : '';
-    return `${item.name} ${formatNum(rounded)} ${item.unit}${suffix}`;
-  }).join(', ');
 }
 
 // ============ STATE ============
@@ -1493,7 +1493,7 @@ function initUI(){
     for(let id=1;id<=11;id++){
     const lbl=document.createElement('label');lbl.className='menu-item';
     lbl.innerHTML=`<input type="checkbox" class="menu-cb" value="${id}" onchange="onSettingsChange()">
-      <span class="menu-name" style="flex:1;">${menus[id].name}</span>
+      <span class="menu-name" style="flex:1;">${escHtml(menus[id].name)}</span>
       <button class="small" style="background:#eee;color:#333;margin:0;padding:2px 6px;width:auto;font-size:12px;" onclick="event.preventDefault();event.stopPropagation();renameMenu(${id})">✏️</button>`;
     mBox.appendChild(lbl);
   }
@@ -1505,6 +1505,7 @@ function initUI(){
   }
   document.getElementById('peopleInput').value=state.people;
   document.getElementById('weeksInput').value=state.weeks;
+  document.getElementById('groupModeSelect').value=state.groupMode||'cat';
   document.querySelectorAll('.menu-cb').forEach(cb=>cb.checked=state.menus.includes(+cb.value));
   document.querySelectorAll('.vs-cb').forEach(cb=>cb.checked=state.vs.includes(+cb.value));
   document.getElementById('reminderDay').value=state.reminderDay;
@@ -1512,9 +1513,27 @@ function initUI(){
   refreshChecks();
 }
 function refreshChecks(){
+  // помечаем выбранные
   document.querySelectorAll('.menu-cb').forEach(cb=>cb.closest('.menu-item').classList.toggle('checked',cb.checked));
   document.querySelectorAll('.vs-cb').forEach(cb=>cb.closest('.vs-item').classList.toggle('checked',cb.checked));
-  const mc=document.querySelectorAll('.menu-cb:checked').length,vc=document.querySelectorAll('.vs-cb:checked').length;
+
+  // обрезаем лишние (защита от импорта/ручной правки localStorage)
+  let mcs=[...document.querySelectorAll('.menu-cb:checked')];
+  if(mcs.length>5){
+    mcs.slice(5).forEach(cb=>{cb.checked=false;cb.closest('.menu-item').classList.remove('checked');});
+    state.menus=mcs.slice(0,5).map(c=>+c.value);
+    saveState();
+  }
+  let vcs=[...document.querySelectorAll('.vs-cb:checked')];
+  if(vcs.length>3){
+    vcs.slice(3).forEach(cb=>{cb.checked=false;cb.closest('.vs-item').classList.remove('checked');});
+    state.vs=vcs.slice(0,3).map(c=>+c.value);
+    saveState();
+  }
+
+  // disable остальных
+  const mc=document.querySelectorAll('.menu-cb:checked').length;
+  const vc=document.querySelectorAll('.vs-cb:checked').length;
   document.querySelectorAll('.menu-cb').forEach(cb=>{cb.disabled=!cb.checked&&mc>=5;cb.closest('.menu-item').classList.toggle('disabled',cb.disabled);});
   document.querySelectorAll('.vs-cb').forEach(cb=>{cb.disabled=!cb.checked&&vc>=3;cb.closest('.vs-item').classList.toggle('disabled',cb.disabled);});
 }
@@ -1562,8 +1581,8 @@ function updateRow(key){
   const qo=state.overrides[key]!==undefined,po=state.prices[key]!==undefined;
   p.q=qo?state.overrides[key]:p.calcQ;p.up=po?state.prices[key]:p.calcUP;p.sum=p.up*p.q;
   const qi=document.getElementById('q_'+key),pi=document.getElementById('p_'+key),si=document.getElementById('s_'+key);
-  if(qi){qi.value=rnd(p.q);qi.closest('.cell').classList.toggle('changed',qo);}
-  if(pi){pi.value=rnd(p.up);pi.closest('.cell').classList.toggle('changed',po);}
+  if(qi){qi.value=rnd(p.q);qi.closest('.input-wrap').classList.toggle('changed',qo);}
+  if(pi){pi.value=rnd(p.up);pi.closest('.input-wrap').classList.toggle('changed',po);}
   if(si)si.textContent=fmtP(p.sum);
 }
 function updateTotals(){
@@ -1572,7 +1591,7 @@ function updateTotals(){
   document.getElementById('stickySub').textContent=state.weeks+' нед · '+state.people+' чел:';
   document.getElementById('stickySum').textContent=fmtP(L+W);
   const el=document.getElementById('grandTotal');
-  if(el)el.innerHTML=`<b>💰 Итого:</b> ${fmtP(L+W)} (разово ${fmtP(L)} + еженед. ${fmtP(W)})`;
+  if(el)el.innerHTML=`<b>💰 Итого:</b> ${fmtP(L+W)} (разово ${fmtP(L)} + еженед. ${fmtP(W/state.weeks)} × ${state.weeks})`;
   updateWarning();
   updateCompare();
 }
@@ -1586,6 +1605,22 @@ function onGroupModeChange() {
   state.groupMode = document.getElementById('groupModeSelect').value;
   saveState();
   build();
+}
+function sortProductsByGroup(list){
+  const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
+  if(state.groupMode === 'store'){
+    return [...list].sort((a,b) => {
+      const sa = (a.store || 'яяя').toLowerCase();
+      const sb = (b.store || 'яяя').toLowerCase();
+      if(sa !== sb) return sa < sb ? -1 : 1;
+      return a.name.localeCompare(b.name,'ru');
+    });
+  }
+  return [...list].sort((a,b) => {
+    const ia = cats.indexOf(a.cat), ib = cats.indexOf(b.cat);
+    if(ia !== ib) return ia - ib;
+    return a.name.localeCompare(b.name,'ru');
+  });
 }
 function build(){
   if(state.menuMode==='custom'){
@@ -1602,7 +1637,9 @@ function build(){
     if(!products[key]){
       const info=productInfo[key]||{name,unit,cat:"Прочее",perishable:false};
       const sh=SHELF[key]||["—",0];
-      products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set()};
+      products[key]={key,name:info.name,unit:info.unit||unit,cat:info.cat,perishable:info.perishable||false,shText:sh[0],shDays:sh[1],calcQ:0,calcSum:0,calcUP:0,q:0,up:0,sum:0,src:new Set(),store:(state.productStores&&state.productStores[key])
+     ||(state.userProducts&&state.userProducts[key]&&state.userProducts[key].store)
+     ||''};
     }
     let f=qty;
     if(products[key].unit==="кг"&&unit==="г")f=qty/1000;
@@ -1613,8 +1650,14 @@ function build(){
     products[key].calcSum+=price*state.weeks;
     products[key].src.add(src);
   }
-  state.menus.forEach(id=>menus[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"М"+id)));
-  state.vs.forEach(id=>vsData[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"ВС"+id)));
+  state.menus.forEach(id=>{
+    if(!menus[id])return;
+    menus[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"М"+id));
+  });
+  state.vs.forEach(id=>{
+    if(!vsData[id])return;
+    vsData[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"ВС"+id));
+  });
   Object.values(products).forEach(p=>{
     p.calcUP=p.calcQ>0?p.calcSum/p.calcQ:0;
     const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
@@ -1622,12 +1665,12 @@ function build(){
     p.up=po?state.prices[p.key]:p.calcUP;
     p.sum=p.up*p.q;
   });
-  currentProducts=products;
+currentProducts = products;
+// чистим override/цены для продуктов, которых больше нет в закупке
+const validKeys = new Set(Object.keys(products));
+Object.keys(state.overrides).forEach(k => { if (!validKeys.has(k)) delete state.overrides[k]; });
+Object.keys(state.prices).forEach(k => { if (!validKeys.has(k)) delete state.prices[k]; });
 
-  const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
-  const groupList = state.groupMode === 'store' 
-    ? [...new Set(Object.values(products).map(p => p.store || p.cat))].sort()
-    : cats;
   const long=[],weekly=[];
   Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
 
@@ -1638,13 +1681,9 @@ function build(){
   html+=`<div class="sum-card"><span>Нед.</span><b>${state.weeks}</b></div></div>`;
 
   html+=`<div class="block-title block-once">📦 Один раз на ${state.weeks} нед.</div>`;
-  cats.forEach(cat=>{
-    long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,false);});
-  });
+  sortProductsByGroup(long).forEach(p=>{html+=renderProd(p,false);});
   html+=`<div class="block-title block-weekly">🔄 Каждую неделю × ${state.weeks}</div>`;
-  cats.forEach(cat=>{
-    weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,true);});
-  });
+  sortProductsByGroup(weekly).forEach(p=>{html+=renderProd(p,true);});
   if(state.weeks>1){
     html+='<div class="block-title" style="background:#f3e5f5;color:#6a1b9a;border-left:4px solid #8e24aa;">📅 План</div>';
     for(let w=1;w<=state.weeks;w++){
@@ -1676,9 +1715,12 @@ function buildFromCustom(){
     if(!recipe)continue;
     const days=entry.days||1;
     const base=getBasePortions(recipe);
-    const factor=getEntryFactor(recipe,state.people,days);
+    const factor=getEntryFactor(recipe,state.people,days) * state.weeks;
     let vsItems=null;
-    for(const vsId in vsRecipes){if(vsRecipes[vsId]===entry.recipeId){vsItems=vsData[vsId].items;break;}}
+    const vsHasOverride = state.recipeOverrides && state.recipeOverrides[entry.recipeId];
+    if(!vsHasOverride){
+      for(const vsId in vsRecipes){if(vsRecipes[vsId]===entry.recipeId){vsItems=vsData[vsId].items;break;}}
+    }
     if(vsItems){
       vsItems.forEach(([name,qty,unit,price])=>{
         addCustomProduct(products,name,qty*factor,unit,price*factor,'СМ');
@@ -1710,7 +1752,6 @@ function buildFromCustom(){
     p.sum=p.up*p.q;
   });
   currentProducts=products;
-  const cats=['Мясо / рыба','Молочные / яйца','Крупы','Овощи','Фрукты / ягоды','Прочее'];
   const long=[],weekly=[];
   Object.values(products).forEach(p=>p.perishable?weekly.push(p):long.push(p));
   let html='<div class="summary">';
@@ -1720,9 +1761,9 @@ function buildFromCustom(){
   html+=`<div class="sum-card"><span>Нед.</span><b>${state.weeks}</b></div></div>`;
   html+='<div class="tip" style="margin-bottom:8px;">📌 Закупка по своему меню. Изменить состав — вкладка «Меню» → «Своё».</div>';
   html+=`<div class="block-title block-once">📦 Один раз на ${state.weeks} нед.</div>`;
-  cats.forEach(cat=>{long.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,false);});});
+  sortProductsByGroup(long).forEach(p=>{html+=renderProd(p,false);});
   html+=`<div class="block-title block-weekly">🔄 Каждую неделю × ${state.weeks}</div>`;
-  cats.forEach(cat=>{weekly.filter(p=>p.cat===cat).sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{html+=renderProd(p,true);});});
+  sortProductsByGroup(weekly).forEach(p=>{html+=renderProd(p,true);});
   html+=`<div class="tip" id="grandTotal"><b>💰 Итого:</b> считаем…</div>`;
   result.innerHTML=html;
   updateTotals();
@@ -1730,18 +1771,19 @@ function buildFromCustom(){
 function renderProd(p,weekly){
   const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
   let h='<div class="prod">';
-  h+=`<div class="prod-name"><span>${p.name}</span><span class="src">${[...p.src].join(',')}</span></div>`;
+  h+=`<div class="prod-name"><span>${escHtml(p.name)}</span><span class="src">${escHtml([...p.src].join(','))}</span></div>`;
   h+='<div class="prod-row">';
   h+=`<div class="cell"><label>кол-во</label><div class="input-wrap${qo?' changed':''}"><input type="number" step="any" min="0" id="q_${p.key}" value="${rnd(p.q)}" onchange="setQty('${p.key}',this.value)"><span class="unit">${p.unit}</span></div></div>`;
-  h+=`<div class="cell"><label>цена/${p.unit}</label><div class="input-wrap${po?' changed':''}"><input type="number" step="any" min="0" id="p_${p.key}" value="${rnd(p.up)}" onchange="setPrice('${p.key}',this.value)"><span class="unit">₽</span></div></div>`;
+  const noPrice = p.up === 0 && p.calcUP === 0;
+  h+=`<div class="cell"><label>цена/${escHtml(p.unit)}</label><div class="input-wrap${po?' changed':''}" style="${noPrice?'border:1px solid #f0b400;border-radius:8px;':''}"><input type="number" step="any" min="0" id="p_${escHtml(p.key)}" value="${rnd(p.up)}" onchange="setPrice('${escHtml(p.key)}',this.value)" placeholder="${noPrice?'!':''}"><span class="unit">₽</span></div></div>`;
   h+=`<div class="cell"><label>сумма</label><div class="total" id="s_${p.key}">${fmtP(p.sum)}</div></div>`;
     h+='</div><div class="prod-meta">';
   h+=`<span class="shelf-badge ${shelfCls(p.shDays)}">${p.shText}</span>`;
   if(weekly)h+=`<span class="perweek">${fmtQty(p.q/state.weeks,p.unit)}/нед</span>`;
   
   // Отображение магазина (кликабельное)
-  h+=`<span style="font-size:10.5px;color:#1976d2;cursor:pointer;text-decoration:underline;" onclick="setProductStore('${p.key}')">📍 ${p.store || 'Указать магазин'}</span>`;
-  h+='</div></div>';
+    h+=`<span style="cursor:pointer;color:#1976d2;font-size:11px;text-decoration:underline;"
+        onclick="setProductStore('${escHtml(p.key)}')">📍 ${escHtml(p.store || 'Указать магазин')}</span>`;
   h+='</div></div>';
   return h;
 }
@@ -1783,7 +1825,7 @@ function renderPresetMenuUI(tabsBar,sched){
   tabsBar.innerHTML=switchHtml+state.menus.map(id=>`<button class="menu-tab-btn${state.activeMenuView===id?' active':''}" onclick="setMenuView(${id})">№${id}</button>`).join('');
   const data=scheduleData[state.activeMenuView];
   if(!data){sched.innerHTML='';return;}
-  sched.innerHTML=`<div class="menu-recipe-title">📋 ${menus[state.activeMenuView].name}</div>`+data.map((day,i)=>{
+  sched.innerHTML=`<div class="menu-recipe-title">📋 ${escHtml(menus[state.activeMenuView].name)}</div>`+data.map((day,i)=>{
     return `<div class="day-card${i===0?' open':''}" onclick="toggleDay(this)">
       <div class="day-header"><h3>${DAY_NAMES[i]}</h3><span class="toggle">▼</span></div>
       <div class="day-body">
@@ -1800,14 +1842,18 @@ function renderCustomMenuUI(tabsBar,sched){
   tabsBar.innerHTML=switchHtml;
   const entries=state.customMenu.entries||{};
   const active=state.customMenu.active;
+  const empty = !hasCustomEntries();
+  const activeLabel = active
+  ? (empty ? '⚠️ Активно, но пусто' : '✅ Используется в закупке')
+  : '📥 Использовать в закупке'; 
   let html=`<div class="cm-header">
     <div style="font-size:12px;color:#555;margin-bottom:6px;">Рецепты на <b>${state.people} ${pluralPeople(state.people)}</b>. Для каждого блюда укажите, на сколько дней оно готовится.</div>
     <button class="small" onclick="openRecipeEditor()" style="background:#1976d2;margin-right:4px;">➕ Создать рецепт</button>
-    <button class="small" onclick="toggleCustomActive()" style="background:${active?'#43a047':'#e85d04'};margin-right:4px;">${active?'✅ Используется в закупке':'📥 Использовать в закупке'}</button>
+    <button class="small" onclick="toggleCustomActive()" style="background:${active?(empty?'#f0b400':'#43a047'):'#e85d04'};margin-right:4px;">${activeLabel}</button>
     <button class="small" onclick="clearCustomMenu()" style="background:#c62828;">🗑 Очистить</button>
   </div>`;
   for(let d=0;d<7;d++){
-    html+=`<div class="day-card open" style="border-left-color:#1976d2;">
+    html+=`<div class="day-card${d===0?' open':''}" style="border-left-color:#1976d2;">
       <div class="day-header" style="background:#e3f2fd;" onclick="toggleDay(this.parentElement)">
         <h3 style="color:#0d47a1;">${DAY_NAMES[d]}</h3><span class="toggle">▼</span>
       </div>
@@ -1828,22 +1874,22 @@ function renderCustomSlot(d,slot,entries){
   const recipe=rid&&rid!=='__free__'?R[rid]:null;
   const base=recipe?getBasePortions(recipe):0;
   let opts='<option value="">— пусто —</option><option value="__free__"'+(rid==='__free__'?' selected':'')+'>✏️ Свободное блюдо</option>';
-  const myIds=Object.keys(state.userRecipes||{});
-  if(myIds.length){
-    opts+=`<optgroup label="⭐ Мои рецепты">`+myIds.map(id=>R[id]?`<option value="${id}"${rid===id?' selected':''}>${R[id].name} (мой)</option>`:'').join('')+`</optgroup>`;
-  }
   const groups=[
-    {label:'Завтраки',ids:RECIPE_CATS.breakfast},
-    {label:'Основные',ids:getMainRecipeIds()},
-    {label:'Десерты',ids:RECIPE_CATS.dessert},
-    {label:'Фастфуд',ids:RECIPE_CATS.fastfood}
+    {label:'Завтраки',ids:recipeIdsByCategory('breakfast')},
+    {label:'Основные',ids:recipeIdsByCategory('lunch')},
+    {label:'Десерты',ids:recipeIdsByCategory('dessert')},
+    {label:'Фастфуд',ids:recipeIdsByCategory('fastfood')}
   ];
   groups.forEach(g=>{
-    opts+=`<optgroup label="${g.label}">`+g.ids.map(id=>R[id]?`<option value="${id}"${rid===id?' selected':''}>${R[id].name}</option>`:'').join('')+`</optgroup>`;
-  });
+  opts+=`<optgroup label="${g.label}">` + g.ids.map(id=>{
+    if (!R[id]) return '';
+    const mine = id.startsWith('user_') ? ' (мой)' : '';
+    return `<option value="${escHtml(id)}"${rid===id?' selected':''}>${escHtml(R[id].name)}${mine}</option>`;
+  }).join('') + `</optgroup>`;
+});
   let controls=`<select onchange="setCustomCell('${key}','recipeId',this.value)">${opts}</select>`;
   if(rid==='__free__'){
-    controls+=`<input type="text" placeholder="Название блюда" value="${entry.customName||''}" onchange="setCustomCell('${key}','customName',this.value)" style="margin-top:4px;">`;
+    controls+=`<input type="text" placeholder="Название блюда" value="${escHtml(entry.customName||'')}" onchange="setCustomCell('${escHtml(key)}','customName',this.value)" style="margin-top:4px;">`;
   }
   if(recipe){
     const factor=getEntryFactor(recipe,state.people,entry.days||1);
@@ -1854,7 +1900,7 @@ function renderCustomSlot(d,slot,entries){
     controls+=`<div class="cm-days">
       <span>дней: </span>
       <input type="number" min="1" max="7" value="${entry.days||1}" onchange="setCustomCell('${key}','days',this.value)">
-      <span class="cm-info">база ${base} дн. · коэф ×${formatNum(Math.round(factor*100)/100)}</span>
+      <span class="cm-info">база ${base} дн. · коэф ×${formatNum(Math.round(factor*100)/100)}/нед</span>
       ${editBtn}
     </div>`;
   }
@@ -1872,23 +1918,22 @@ function toggleCustomActive(){
   showToast(state.customMenu.active?'✅ Своё меню в закупке':'Отключено');
 }
 
-function clearCustomMenu(){
-  if(!confirm('Удалить всё содержимое своего меню?'))return;
-  state.customMenu.entries={};
-  saveState();renderMenuTab();
-  if(state.menuMode==='custom')build();
-}
-
 function setCustomCell(key,field,value){
+  if(!state.customMenu) state.customMenu = {active:false,entries:{}};
+  if(!state.customMenu.entries) state.customMenu.entries = {};
   if(!state.customMenu.entries[key])state.customMenu.entries[key]={recipeId:'',days:1,customName:''};
   if(field==='days')value=Math.max(1,Math.min(7,parseInt(value)||1));
   state.customMenu.entries[key][field]=value;
   saveState();renderMenuTab();
   if(state.menuMode==='custom'&&state.customMenu.active)build();
 }
+
 function renderMeal(cls,label,data){
   if(!data)return '';
-  const name=data.recipe?`<span class="meal-name recipe-link" onclick="event.stopPropagation();showRecipe('${data.recipe}')">${data.name}</span>`:`<span class="meal-name">${data.name}</span>`;
+  const recName = (data.recipe && R[data.recipe]) ? R[data.recipe].name : data.name;
+  const name=data.recipe
+    ? `<span class="meal-name recipe-link" onclick="event.stopPropagation();showRecipe('${escHtml(data.recipe)}')">${escHtml(recName)}</span>`
+    : `<span class="meal-name">${escHtml(data.name)}</span>`;
   return `<div class="meal ${cls}"><div class="meal-label">${label}</div><div class="meal-content">${name}</div></div>`;
 }
 function toggleDay(el){el.classList.toggle('open');}
@@ -1927,22 +1972,27 @@ function renderRecipes(){
         const factor=getEntryFactor(r,state.people,days);
         const scaledIng=scaleIngredientsForEntry({...r,_id:entry.recipeId},state.people,days);
         dayHtml+=`<div class="recipe" onclick="toggleRecipe(this)">
-          <div class="recipe-head"><div><h4>${SLOT_ICONS[slot]} ${r.name}</h4>
-            <div class="recipe-for">${DAY_NAMES[d]} · ${days} дн. · ×${formatNum(Math.round(factor*100)/100)} · <span class="recipe-time">⏱ ${r.time}</span></div></div>
+          <div class="recipe-head"><div><h4>${SLOT_ICONS[slot]} ${escHtml(r.name)}</h4>
+            <div class="recipe-for">${SLOT_NAMES[slot]} · ${days} дн. · ×${formatNum(Math.round(factor*100)/100)} · <span class="recipe-time">⏱ ${escHtml(r.time)}</span></div></div>
             <span class="recipe-toggle">▼</span></div>
           <div class="recipe-body">
             <div class="recipe-section"><b>Ингредиенты (на ${state.people} ${pluralPeople(state.people)}, ${days} дн.)</b><p>${scaledIng}</p></div>
-            <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>
-            <div class="recipe-bju">${r.bju}</div>
+            <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${escHtml(s)}</li>`).join('')}</ol></div>
+            <div class="recipe-bju">${escHtml(r.bju)}</div>
           </div></div>`;
       }
-      if(dayHtml)html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">${DAY_NAMES[d]}</div>${dayHtml}</div>`;
+      if(dayHtml){
+        html += `<div class="menu-recipe-group">
+          <div class="menu-recipe-title">📋 ${escHtml(DAY_NAMES[d])}</div>
+          ${dayHtml}
+        </div>`;
+      }
     }
     list.innerHTML=html;
     return;
   }
   if(!state.menus.length&&!state.vs.length){
-    list.innerHTML='<div class="card-block">Выберите меню на вкладке «Закупка».</div>';
+    list.innerHTML='<div class="card-block">Выберите хотя бы одно меню.</div>';
     return;
   }
   const header=`<div class="tip" style="margin-bottom:12px;"><b>🍽 Рецепты на ${state.people} ${pluralPeople(state.people)}.</b> Ингредиенты точно соответствуют закупке (пересчитаны на количество дней в меню).</div>`;
@@ -1959,7 +2009,7 @@ function renderRecipes(){
       if (m && m.recipe) cnt[m.recipe] = (cnt[m.recipe]||0)+1;
     }
     
-    html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${menus[id].name}</div>`;
+    html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${escHtml(menus[id].name)}</div>`;
     rIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid, cnt[rid]||1);});
     html+='</div>';
   });
@@ -1989,15 +2039,15 @@ function renderRecipe(rid, occurrences){
   return `<div class="recipe" onclick="toggleRecipe(this)">
     <div class="recipe-head">
       <div>
-        <h4>${r.name}</h4>
+        <h4>${escHtml(r.name)}</h4>
         <div class="recipe-for">${displayFor} · <span class="recipe-time">⏱ ${r.time}</span></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;"><button class="small" style="background:#1976d2;margin:0;width:auto;padding:4px 8px;font-size:12px;" onclick="event.stopPropagation();openRecipeEditor('${rid}')">✏️</button><span class="recipe-toggle">▼</span></div>
     </div>
     <div class="recipe-body">
       <div class="recipe-section"><b>Ингредиенты</b><p>${scaledIng}</p></div>
-      <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></div>
-      <div class="recipe-bju">${r.bju}</div>
+      <div class="recipe-section"><b>Приготовление</b><ol>${r.steps.map(s=>`<li>${escHtml(s)}</li>`).join('')}</ol></div>
+      <div class="recipe-bju">${escHtml(r.bju)}</div>
     </div>
   </div>`;
 }
@@ -2035,7 +2085,7 @@ function renderChecks(){
     total+=c.sum;
     const d=new Date(c.date);
     const dd=d.toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'});
-    return `<div class="check-item"><div class="info"><div class="date">${dd}</div><div class="sum">${fmtP(c.sum)}</div>${c.note?`<div class="note">${c.note}</div>`:''}</div><button class="small danger" onclick="removeCheck(${c.id})">✕</button></div>`;
+    return `<div class="check-item"><div class="info"><div class="date">${dd}</div><div class="sum">${fmtP(c.sum)}</div>${c.note?`<div class="note">${escHtml(c.note)}</div>`:''}</div><button class="small danger" onclick="removeCheck(${c.id})">✕</button></div>`;
   }).join('');
   totalEl.innerHTML=`<div class="check-total"><span>Всего потрачено:</span><b>${fmtP(total)}</b></div>`;
   updateCompare();
@@ -2077,7 +2127,9 @@ function downloadICS(){
 }
 async function requestNotifications(){
   if(!('Notification' in window)){showToast('Уведомления не поддерживаются','error');return;}
-  const perm=await Notification.requestPermission();
+  let perm;
+  try{ perm = await Notification.requestPermission(); }
+  catch(e){ showToast('Не удалось запросить','error'); return; }
   if(perm==='granted'){
     showToast('✅ Уведомления разрешены');
     try{new Notification('Закупка',{body:'Уведомления включены.',icon:'icon.svg'});}catch(e){}
@@ -2105,6 +2157,8 @@ function importData(){
         if(data.state&&typeof data.state==='object'){
           state={...DEFAULT_STATE,...data.state};
           syncMenuNames();saveState();syncUserRecipes();initUI();build();renderChecks();
+          if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
+          if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
           showToast('✅ Импорт успешен');
         } else throw new Error('Нет поля state');
       } catch(err){showToast('Ошибка импорта: '+err.message,'error');}
@@ -2117,14 +2171,32 @@ function resetAllData(){
   if(!confirm('Удалить ВСЕ данные?'))return;
   if(!confirm('Точно? Сохраните резервную копию через «Экспорт».'))return;
   state={...DEFAULT_STATE,menus:[1],vs:[],overrides:{},prices:{},checks:[]};
-  saveState();initUI();build();renderChecks();
+  saveState();
+  syncUserRecipes();
+  syncMenuNames();
+  initUI();build();renderChecks();
+  if(document.getElementById('tab-menu').classList.contains('active'))renderMenuTab();
+  if(document.getElementById('tab-recipes').classList.contains('active'))renderRecipes();
   showToast('🗑 Всё сброшено');
 }
 
 // ============ КОПИРОВАНИЕ / SHARE ============
+function groupProductsForText(list){
+  if (state.groupMode === 'store') {
+    const groups = {};
+    list.forEach(p => {
+      const key = p.store || 'Без магазина';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    return Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0],'ru'));
+  }
+  const cats = ["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
+  return cats.map(c => [c, list.filter(p => p.cat === c)]).filter(([,arr]) => arr.length);
+}
+
 function buildListText(){
   const weeks=state.weeks,people=state.people;
-  const cats=["Мясо / рыба","Молочные / яйца","Крупы","Овощи","Фрукты / ягоды","Прочее"];
   let t=`🛒 Закупка на ${weeks} нед · ${people} чел\n`;
   if(state.menus.length)t+=`📋 Меню: ${state.menus.map(id=>'№'+id).join(', ')}\n`;
   if(state.vs.length)t+=`🍔 ВС: ${state.vs.map(id=>vsData[id].name).join(', ')}\n`;
@@ -2134,10 +2206,9 @@ function buildListText(){
   let L=0,W=0;
   if(long.length){
     t+=`━━━ 📦 ОДИН РАЗ ━━━\n`;
-    cats.forEach(c=>{
-      const it=long.filter(p=>p.cat===c);if(!it.length)return;
-      t+=`\n▸ ${c}\n`;
-      it.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
+    groupProductsForText(long).forEach(([title, items]) => {
+      t+=`\n▸ ${title}\n`;
+      items.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
         t+=`• ${p.name} — ${fmtQty(p.q,p.unit)} · ${Math.round(p.up)}₽/${p.unit} = ${Math.round(p.sum)}₽\n`;L+=p.sum;
       });
     });
@@ -2145,10 +2216,9 @@ function buildListText(){
   }
   if(weekly.length){
     t+=`━━━ 🔄 КАЖДУЮ НЕДЕЛЮ × ${weeks} ━━━\n`;
-    cats.forEach(c=>{
-      const it=weekly.filter(p=>p.cat===c);if(!it.length)return;
-      t+=`\n▸ ${c}\n`;
-      it.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
+    groupProductsForText(weekly).forEach(([title, items]) => {
+      t+=`\n▸ ${title}\n`;
+      items.sort((a,b)=>a.name.localeCompare(b.name,'ru')).forEach(p=>{
         t+=`• ${p.name} — ${fmtQty(p.q/weeks,p.unit)}/нед · всего ${fmtQty(p.q,p.unit)} · ≈${Math.round(p.sum)}₽\n`;W+=p.sum;
       });
     });
@@ -2188,9 +2258,9 @@ window.addEventListener('beforeinstallprompt',(e)=>{
   document.getElementById('installBtn').style.display='block';
 });
 async function installApp(){
-  if(!deferredPrompt)return;
+  if(!deferredPrompt){document.getElementById('installBtn').style.display='none';return;}
   deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
+  const choice = await deferredPrompt.userChoice;
   deferredPrompt=null;
   document.getElementById('installBtn').style.display='none';
 }
@@ -2203,10 +2273,9 @@ if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().cat
 syncUserRecipes();
 syncMenuNames();
 initUI();
-build();
 renderChecks();
 updateReminderText();
-switchTab('shop');
+switchTab('shop');   // сам вызовет build() для вкладки "shop"
 </script>
 </body>
 </html>
