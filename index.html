@@ -1858,13 +1858,14 @@ function build(){
         
         if (m.recipe && R[m.recipe]) {
           const parsed = parseIngredients(R[m.recipe].ing);
+          const base = getBasePortions(R[m.recipe]); // ← Получаем базу (4 порции)
           parsed.forEach(item => {
             if(item.qty === null) return;
             const r = resolveProduct(item.name);
             if(!r) return;
             if (!unitsCompatible(item.unit, r.info.unit)) return;
             
-            const scaledQty = item.qty * state.people;
+            const scaledQty = item.qty * (state.people / base); // ← ДЕЛИМ НА БАЗУ
             const qtyInUnit = convertToUnit(scaledQty, item.unit, r.info.unit);
             const price = (r.price || 0) * qtyInUnit;
             add(r.info.name, scaledQty, item.unit, price, "М"+id);
@@ -2302,22 +2303,30 @@ function renderRecipes(){
     if(!rIds.length)return;
     
     const cnt = {};
-    const rDays = {}; // ← собираем дни
+    const rDays = {};
     const days = scheduleData[id] || [];
+    const skipped = state.mealSelection && state.mealSelection[id]; // ← Проверяем галочки
+
     days.forEach((day, dIdx) => {
       for (const slot of ['breakfast','lunch','dinner','sweet']) {
         const m = day[slot];
-        if (m && m.recipe) {
+        // Учитываем только те блюда, с которых НЕ снята галочка
+        if (m && m.recipe && (!skipped || !skipped[`${dIdx}-${slot}`])) {
           cnt[m.recipe] = (cnt[m.recipe]||0)+1;
           if (!rDays[m.recipe]) rDays[m.recipe] = [];
-          rDays[m.recipe].push(DAY_NAMES[dIdx].slice(0,2)); // "Пн", "Вт"
+          rDays[m.recipe].push(DAY_NAMES[dIdx].slice(0,2));
         }
       }
     });
     
-    html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${escHtml(menus[id].name)}</div>`;
-    rIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid, cnt[rid]||1, rDays[rid]||[]);}); // ← передаем дни
-    html+='</div>';
+    // Показываем только те рецепты, которые готовятся хотя бы 1 раз
+    const activeRIds = rIds.filter(rid => cnt[rid] > 0);
+    
+    if (activeRIds.length > 0) {
+      html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">📋 ${escHtml(menus[id].name)}</div>`;
+      activeRIds.forEach(rid=>{if(R[rid])html+=renderRecipe(rid, cnt[rid], rDays[rid]);});
+      html+='</div>';
+    }
   });
   if(state.vs.length){
     html+=`<div class="menu-recipe-group"><div class="menu-recipe-title">🍔 Блюдо на ВС</div>`;
