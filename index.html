@@ -2152,8 +2152,8 @@ function renderMeal(cls,label,data, menuId, dayIdx, slot){
     ? `<span class="meal-name recipe-link" onclick="event.stopPropagation();showRecipe('${escHtml(data.recipe)}')">${escHtml(recName)}</span>`
     : `<span class="meal-name">${escHtml(data.name)}</span>`;
     
-  // Добавляем чекбокс (если это пресетное меню)
-  const checkHtml = menuId ? `<input type="checkbox" class="meal-check" ${isSkipped ? '' : 'checked'} onchange="event.stopPropagation();toggleMealCheck(${menuId}, ${dayIdx}, '${slot}', this.checked)" title="Учитывать в закупке" style="margin-right:8px; accent-color:#e85d04; width:16px; height:16px; cursor:pointer;">` : '';
+  // ВАЖНО: Добавлен onclick="event.stopPropagation()" на сам чекбокс
+  const checkHtml = menuId ? `<input type="checkbox" class="meal-check" onclick="event.stopPropagation()" ${isSkipped ? '' : 'checked'} onchange="toggleMealCheck(${menuId}, ${dayIdx}, '${slot}', this.checked)" title="Учитывать в закупке" style="margin-right:8px; accent-color:#e85d04; width:16px; height:16px; cursor:pointer;">` : '';
 
   return `<div class="meal ${cls}" style="${isSkipped ? 'opacity:0.5;' : ''}">
     <div class="meal-label" style="display:flex; align-items:center;">${checkHtml}${label}</div>
