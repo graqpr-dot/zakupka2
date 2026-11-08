@@ -1499,7 +1499,7 @@ function hasCustomEntries(){
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{},hiddenMenus:{},hiddenVs:{}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{},hiddenMenus:{},hiddenVs:{},mealSelection:{}};
 let state=loadState();
 let currentProducts={};
 function loadState(){
@@ -1689,7 +1689,23 @@ function toggleHideMenu(id, ev){
   if(document.getElementById('tab-menu').classList.contains('active')) renderMenuTab();
   if(document.getElementById('tab-recipes').classList.contains('active')) renderRecipes();
 }
-
+function toggleMealCheck(menuId, dayIdx, slot, checked) {
+  if(!state.mealSelection) state.mealSelection = {};
+  if(!state.mealSelection[menuId]) state.mealSelection[menuId] = {};
+  
+  const key = `${dayIdx}-${slot}`;
+  if(checked) {
+    delete state.mealSelection[menuId][key];
+  } else {
+    state.mealSelection[menuId][key] = true;
+  }
+  
+  // Если удалили все галочки, чистим объект для этого меню
+  if(Object.keys(state.mealSelection[menuId]).length === 0) delete state.mealSelection[menuId];
+  
+  saveState();
+  build();
+}
 function toggleHideVs(id, ev){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   if(!state.hiddenVs) state.hiddenVs = {};
@@ -1784,10 +1800,52 @@ function build(){
     products[key].calcSum+=price*state.weeks;
     products[key].src.add(src);
   }
-  state.menus.forEach(id=>{
+    state.menus.forEach(id=>{
     if(!menus[id])return;
-    menus[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"М"+id));
-  });
+    
+    const skipped = state.mealSelection && state.mealSelection[id];
+    
+    // Если галочки не снимались, используем быстрый жесткий расчет
+    if(!skipped || Object.keys(skipped).length === 0) {
+      menus[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"М"+id));
+      return;
+    }
+    
+    // Если галочки сняты — считаем по рецептам (только то, что отмечено)
+    const days = scheduleData[id] || [];
+    days.forEach((day, dIdx) => {
+      ['breakfast','lunch','dinner','sweet'].forEach(slot => {
+        const m = day[slot];
+        if(!m || skipped[`${dIdx}-${slot}`]) return; // Пропускаем отмененные блюда
+        
+        if (m.recipe && R[m.recipe]) {
+          const parsed = parseIngredients(R[m.recipe].ing);
+          parsed.forEach(item => {
+            if(item.qty === null) return;
+            const r = resolveProduct(item.name);
+            if(!r) return;
+            if (!unitsCompatible(item.unit, r.info.unit)) return;
+            
+            const scaledQty = item.qty * state.people;
+            const qtyInUnit = convertToUnit(scaledQty, item.unit, r.info.unit);
+            const price = (r.price || 0) * qtyInUnit;
+            add(r.info.name, scaledQty, item.unit, price, "М"+id);
+          });
+        } else {
+          // Простые перекусы (2 яйца, творог + банан) — парсим по словарю
+          const mealStr = m.name.toLowerCase();
+          if(mealStr.includes('творог')) add('Творог', 150, 'г', 67.5, "М"+id); // примерная цена
+          if(mealStr.includes('яйца') || mealStr.includes('2 яйца')) add('Яйца', 2, 'шт', 16, "М"+id);
+          if(mealStr.includes('банан')) add('Бананы', 50, 'г', 5, "М"+id);
+          if(mealStr.includes('яблоко')) add('Яблоки', 100, 'г', 10, "М"+id);
+          if(mealStr.includes('хлеб')) add('Хлеб', 1, 'шт', 45, "М"+id);
+          if(mealStr.includes('шоколад')) add('Шоколад 70%+', 15, 'г', 37.5, "М"+id);
+          if(mealStr.includes('огурец')) add('Огурцы', 0.05, 'кг', 9, "М"+id);
+          if(mealStr.includes('помидор')) add('Помидоры', 0.05, 'кг', 10, "М"+id);
+        }
+      });
+    });
+  });;
   state.vs.forEach(id=>{
     if(!vsData[id])return;
     vsData[id].items.forEach(([n,q,u,p])=>add(n,q*state.people,u,p*state.people,"ВС"+id));
@@ -1964,10 +2022,10 @@ function renderPresetMenuUI(tabsBar,sched){
     return `<div class="day-card${i===0?' open':''}" onclick="toggleDay(this)">
       <div class="day-header"><h3>${DAY_NAMES[i]}</h3><span class="toggle">▼</span></div>
       <div class="day-body">
-        ${renderMeal('breakfast','Завтрак',day.breakfast)}
-        ${renderMeal('lunch','Обед',day.lunch)}
-        ${renderMeal('dinner','Ужин',day.dinner)}
-        ${renderMeal('sweet','Сладкое',day.sweet)}
+        ${renderMeal('breakfast','Завтрак',day.breakfast, state.activeMenuView, i, 'breakfast')}
+        ${renderMeal('lunch','Обед',day.lunch, state.activeMenuView, i, 'lunch')}
+        ${renderMeal('dinner','Ужин',day.dinner, state.activeMenuView, i, 'dinner')}
+        ${renderMeal('sweet','Сладкое',day.sweet, state.activeMenuView, i, 'sweet')}
       </div></div>`;
   }).join('');
 }
@@ -2082,13 +2140,25 @@ function setCustomCell(key,field,value){
   if(state.menuMode==='custom'&&state.customMenu.active)build();
 }
 
-function renderMeal(cls,label,data){
+function renderMeal(cls,label,data, menuId, dayIdx, slot){
   if(!data)return '';
+  
   const recName = (data.recipe && R[data.recipe]) ? R[data.recipe].name : data.name;
-  const name=data.recipe
+  
+  // Проверяем, снята ли галочка
+  const isSkipped = state.mealSelection && state.mealSelection[menuId] && state.mealSelection[menuId][`${dayIdx}-${slot}`];
+  
+  const name = data.recipe
     ? `<span class="meal-name recipe-link" onclick="event.stopPropagation();showRecipe('${escHtml(data.recipe)}')">${escHtml(recName)}</span>`
     : `<span class="meal-name">${escHtml(data.name)}</span>`;
-  return `<div class="meal ${cls}"><div class="meal-label">${label}</div><div class="meal-content">${name}</div></div>`;
+    
+  // Добавляем чекбокс (если это пресетное меню)
+  const checkHtml = menuId ? `<input type="checkbox" class="meal-check" ${isSkipped ? '' : 'checked'} onchange="event.stopPropagation();toggleMealCheck(${menuId}, ${dayIdx}, '${slot}', this.checked)" title="Учитывать в закупке" style="margin-right:8px; accent-color:#e85d04; width:16px; height:16px; cursor:pointer;">` : '';
+
+  return `<div class="meal ${cls}" style="${isSkipped ? 'opacity:0.5;' : ''}">
+    <div class="meal-label" style="display:flex; align-items:center;">${checkHtml}${label}</div>
+    <div class="meal-content">${name}</div>
+  </div>`;
 }
 function toggleDay(el){el.classList.toggle('open');}
 function setMenuView(id){state.activeMenuView=id;saveState();renderMenuTab();}
