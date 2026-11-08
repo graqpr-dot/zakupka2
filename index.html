@@ -1056,15 +1056,29 @@ function openRecipeEditor(recipeId){
   const delBtn=document.getElementById('re_delete_btn');
   const resetBtn=document.getElementById('re_reset_btn'); // кнопка сброса
   
+  const baseInput = document.getElementById('re_base');
+  const ingInput = document.getElementById('re_ing');
+
+  // Создаем или находим элемент подсказки под полем порций
+  let baseHint = document.getElementById('re_base_hint');
+  if(!baseHint){
+    baseHint = document.createElement('div');
+    baseHint.id = 're_base_hint';
+    // Стили для красной подсказки
+    baseHint.style.cssText = 'font-size:11px; color:#c62828; margin-top:6px; display:none; line-height:1.3;';
+    // Вставляем сразу после поля ввода порций
+    baseInput.parentNode.insertBefore(baseHint, baseInput.nextSibling);
+  }
+
   if(recipeId){
     const r=R[recipeId];
     if(!r)return;
     document.getElementById('re_id').value=recipeId;
     document.getElementById('re_name').value=r.name;
     document.getElementById('re_category').value=r.category||'lunch';
-    document.getElementById('re_base').value=getBasePortions(r);
+    baseInput.value=getBasePortions(r);
     document.getElementById('re_time').value=r.time||'';
-    document.getElementById('re_ing').value=r.ing;
+    ingInput.value=r.ing;
     document.getElementById('re_steps').value=(r.steps||[]).join('\n');
     document.getElementById('re_bju').value=r.bju||'';
     
@@ -1073,23 +1087,40 @@ function openRecipeEditor(recipeId){
       title.textContent='Редактировать свой рецепт';
       if(delBtn) delBtn.style.display='block';
       if(resetBtn) resetBtn.style.display='none';
+      
+      // Для своих рецептов всё разрешено
+      baseInput.disabled = false;
+      ingInput.disabled = false;
+      baseHint.style.display = 'none';
     } else {
       title.textContent='Редактировать готовый рецепт';
       if(delBtn) delBtn.style.display='none';
       if(resetBtn) resetBtn.style.display='block';
+      
+      // Для готовых рецептов блокируем изменение порций и ингредиентов
+      baseInput.disabled = true;
+      ingInput.disabled = true;
+      baseHint.textContent = 'Количество порций и ингредиенты зафиксированы для готовых меню, чтобы не нарушать расчет закупки. Чтобы изменить их, создайте свой рецепт.';
+      baseHint.style.display = 'block';
     }
   } else {
+    // Создание нового рецепта
     document.getElementById('re_id').value='';
     document.getElementById('re_name').value='';
     document.getElementById('re_category').value='lunch';
-    document.getElementById('re_base').value=3;
+    baseInput.value=3;
     document.getElementById('re_time').value='';
-    document.getElementById('re_ing').value='';
+    ingInput.value='';
     document.getElementById('re_steps').value='';
     document.getElementById('re_bju').value='';
     title.textContent='Новый рецепт';
     if(delBtn) delBtn.style.display='none';
     if(resetBtn) resetBtn.style.display='none';
+    
+    // Для нового рецепта поля разблокированы
+    baseInput.disabled = false;
+    ingInput.disabled = false;
+    baseHint.style.display = 'none';
   }
   modal.style.display='flex';
   setTimeout(()=>document.getElementById('re_name').focus(),100);
