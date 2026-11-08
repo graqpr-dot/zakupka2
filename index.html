@@ -1700,11 +1700,50 @@ function toggleMealCheck(menuId, dayIdx, slot, checked) {
     state.mealSelection[menuId][key] = true;
   }
   
-  // Если удалили все галочки, чистим объект для этого меню
   if(Object.keys(state.mealSelection[menuId]).length === 0) delete state.mealSelection[menuId];
   
   saveState();
   build();
+  renderMenuTab(); // ← ДОБАВЛЕНО: перерисовываем меню, чтобы обновить состояние "верхних" галочек
+}
+function toggleMenuAll(menuId, checked) {
+  if(!state.mealSelection) state.mealSelection = {};
+  
+  if (checked) {
+    // Если ставим всё — просто удаляем блок (по умолчанию всё включено)
+    delete state.mealSelection[menuId];
+  } else {
+    // Если снимаем всё — заполняем все 28 слотов (7 дней × 4 приема)
+    state.mealSelection[menuId] = {};
+    for(let d=0; d<7; d++) {
+      ['breakfast','lunch','dinner','sweet'].forEach(slot => {
+        state.mealSelection[menuId][`${d}-${slot}`] = true;
+      });
+    }
+  }
+  saveState();
+  build();
+  renderMenuTab(); // Обновляем интерфейс меню
+}
+
+function toggleDayAll(menuId, dayIdx, checked) {
+  if(!state.mealSelection) state.mealSelection = {};
+  if(!state.mealSelection[menuId]) state.mealSelection[menuId] = {};
+  
+  const slots = ['breakfast','lunch','dinner','sweet'];
+  if (checked) {
+    // Ставим всё в дне — удаляем ключи этого дня
+    slots.forEach(slot => delete state.mealSelection[menuId][`${dayIdx}-${slot}`]);
+  } else {
+    // Снимаем всё в дне — ставим true
+    slots.forEach(slot => state.mealSelection[menuId][`${dayIdx}-${slot}`] = true);
+  }
+  
+  if(Object.keys(state.mealSelection[menuId]).length === 0) delete state.mealSelection[menuId];
+  
+  saveState();
+  build();
+  renderMenuTab();
 }
 function toggleHideVs(id, ev){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
@@ -2008,6 +2047,9 @@ function renderMenuTab(){
 }
 
 function renderPresetMenuUI(tabsBar,sched){
+  // 1. Запоминаем, какие дни были открыты, чтобы не схлопывать их при перерисовке
+  const openDays = [...document.querySelectorAll('.day-card.open')].map(el => el.getAttribute('data-day'));
+
   const switchHtml=`<button class="menu-tab-btn" onclick="setMenuMode('preset')" style="background:#e85d04;color:#fff;margin-right:6px;">📋 Готовые</button><button class="menu-tab-btn" onclick="setMenuMode('custom')" style="margin-right:10px;">✏️ Своё</button>`;
   if(!state.menus.length){
     tabsBar.innerHTML=switchHtml;
@@ -2015,19 +2057,54 @@ function renderPresetMenuUI(tabsBar,sched){
     return;
   }
   if(!state.menus.includes(state.activeMenuView))state.activeMenuView=state.menus[0];
+  
   tabsBar.innerHTML=switchHtml+state.menus.map(id=>`<button class="menu-tab-btn${state.activeMenuView===id?' active':''}" onclick="setMenuView(${id})">№${id}</button>`).join('');
+  
   const data=scheduleData[state.activeMenuView];
   if(!data){sched.innerHTML='';return;}
-  sched.innerHTML=`<div class="menu-recipe-title">📋 ${escHtml(menus[state.activeMenuView].name)}</div>`+data.map((day,i)=>{
-    return `<div class="day-card${i===0?' open':''}" onclick="toggleDay(this)">
-      <div class="day-header"><h3>${DAY_NAMES[i]}</h3><span class="toggle">▼</span></div>
+
+  const menuId = state.activeMenuView;
+  const skipped = state.mealSelection && state.mealSelection[menuId];
+  
+  // 2. Главная галочка меню (стоит, если не всё снято)
+  const totalMeals = 28;
+  const skippedCount = skipped ? Object.keys(skipped).length : 0;
+  const isAllMenuChecked = skippedCount < totalMeals;
+  
+  const topCheckHtml = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:0 4px;">
+      <input type="checkbox" id="menu-all-check" ${isAllMenuChecked ? 'checked' : ''} onchange="toggleMenuAll(${menuId}, this.checked)" style="accent-color:#e85d04; width:20px; height:20px; cursor:pointer;">
+      <label for="menu-all-check" style="font-size:13px; font-weight:600; color:#555; cursor:pointer; margin:0;">Учитывать всё меню в закупке</label>
+    </div>`;
+
+  sched.innerHTML=topCheckHtml + `<div class="menu-recipe-title">📋 ${escHtml(menus[menuId].name)}</div>`+data.map((day,i)=>{
+    // 3. Галочка дня (стоит, если в дне есть хотя бы одно выбранное блюдо)
+    const slots = ['breakfast','lunch','dinner','sweet'];
+    const daySkippedCount = slots.filter(slot => skipped && skipped[`${i}-${slot}`]).length;
+    const isDayChecked = daySkippedCount < 4;
+    
+    return `<div class="day-card${i===0?' open':''}" data-day="${i}" onclick="toggleDay(this)">
+      <div class="day-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" ${isDayChecked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleDayAll(${menuId}, ${i}, this.checked)" style="accent-color:#e85d04; width:18px; height:18px; cursor:pointer;" title="Учитывать весь день">
+          <h3>${DAY_NAMES[i]}</h3>
+        </div>
+        <span class="toggle">▼</span>
+      </div>
       <div class="day-body">
-        ${renderMeal('breakfast','Завтрак',day.breakfast, state.activeMenuView, i, 'breakfast')}
-        ${renderMeal('lunch','Обед',day.lunch, state.activeMenuView, i, 'lunch')}
-        ${renderMeal('dinner','Ужин',day.dinner, state.activeMenuView, i, 'dinner')}
-        ${renderMeal('sweet','Сладкое',day.sweet, state.activeMenuView, i, 'sweet')}
+        ${renderMeal('breakfast','Завтрак',day.breakfast, menuId, i, 'breakfast')}
+        ${renderMeal('lunch','Обед',day.lunch, menuId, i, 'lunch')}
+        ${renderMeal('dinner','Ужин',day.dinner, menuId, i, 'dinner')}
+        ${renderMeal('sweet','Сладкое',day.sweet, menuId, i, 'sweet')}
       </div></div>`;
   }).join('');
+
+  // 4. Восстанавливаем открытые дни
+  if (openDays.length > 0) {
+    openDays.forEach(dIdx => {
+      const el = document.querySelector(`.day-card[data-day="${dIdx}"]`);
+      if(el) el.classList.add('open');
+    });
+  }
 }
 
 function renderCustomMenuUI(tabsBar,sched){
