@@ -836,7 +836,8 @@ const scheduleData = {
 const DAY_NAMES=["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
 
 // ============ УТИЛИТЫ ============
-function getCanonical(name){const n=name.toLowerCase();
+function getCanonical(name){
+  const n=name.toLowerCase();
   if(n.includes("морковь по-корейски")||n.includes("морковь по корейски"))return"korean_carrot";
   if(n.includes("огурец маринованный")||n.includes("огурцы маринованные"))return"pickled_cucumber";
   if(n.includes("томатная паста"))return"tomato_paste";
@@ -844,10 +845,13 @@ function getCanonical(name){const n=name.toLowerCase();
   if(n.includes("масло сливочное"))return"butter";
   if(n.includes("оливковое масло"))return"olive_oil";
   if(n.includes("масло растительное, специи"))return"oil_spices";
-  if(n.includes("масло растительное")||n.includes("масло растит"))return"oil";
+  
+  // Ловит просто "масло" (растительное)
+  if(n.includes("масло"))return"oil";
+  
   if(n.includes("горчица")||n.includes("кетчуп"))return"mustard_ketchup";
   if(n.includes("соус"))return"sauce";
-  if(n.includes("панировка"))return"breading";
+  if(n.includes("панировка")||n.includes("сухари"))return"breading";
   if(n.includes("тесто"))return"dough";
   if(n.includes("булочка для бургера"))return"bun_burger";
   if(n.includes("булочка для хот-дога"))return"bun_hotdog";
@@ -858,50 +862,69 @@ function getCanonical(name){const n=name.toLowerCase();
   if(n.includes("молоко"))return"milk";
   if(n.includes("сосиска"))return"sausage";
   if(n.includes("оливки"))return"olives";
-  if(n.includes("салат листовой"))return"lettuce";
+  if(n.includes("салат листовой")||n.includes("салат"))return"lettuce";
   if(n.includes("фета")||n.includes("брынза"))return"feta";
-  if(n.includes("курица")||n.includes("куриное"))return n.includes("фарш")?"mince":"chicken";
-  if(n.includes("индейка")||n.includes("индейки"))return n.includes("фарш")?"mince":"turkey";
+  
+  // Ловит "курица", "куриное", "куриные"
+  if(n.includes("кур"))return n.includes("фарш")?"mince":"chicken";
+  // Ловит "индейка", "индейки"
+  if(n.includes("индейк"))return n.includes("фарш")?"mince":"turkey";
+  
   if(n.includes("говядина"))return"beef";
   if(n.includes("свинина"))return"pork";
   if(n.includes("фарш"))return"mince";
   if(n.includes("лосось")||n.includes("горбуша")||n.includes("форель"))return"fish_red";
   if(n.includes("рыба")||n.includes("минтай")||n.includes("треска"))return"fish_white";
   if(n.includes("креветки"))return"shrimp";
-  if(n.includes("яйца"))return"eggs";
+  
+  // Ловит "яйца", "яйцо", "яиц"
+  if(n.includes("яйца")||n.includes("яйцо")||n.includes("яиц"))return"eggs";
+  
   if(n.includes("творог"))return"cottage";
   if(n.includes("йогурт"))return"yogurt";
   if(n.includes("кефир"))return"kefir";
   if(n.includes("гречка"))return"buckwheat";
   if(n.includes("рис"))return"rice";
   if(n.includes("овсяные")||n.includes("овсянка"))return"oats";
-  if(n.includes("макароны")||n.includes("вермишель"))return"pasta";
+  if(n.includes("макароны")||n.includes("вермишель")||n.includes("паста"))return"pasta";
   if(n.includes("булгур"))return"bulgur";
   if(n.includes("кускус"))return"couscous";
   if(n.includes("киноа"))return"quinoa";
   if(n.includes("полба"))return"spelt";
   if(n.includes("мука"))return"flour";
-  if(n.includes("картофель"))return"potato";
+  if(n.includes("картофель")||n.includes("пюре"))return"potato";
   if(n.includes("капуста"))return"cabbage";
   if(n.includes("морковь"))return"carrot";
   if(n.includes("лук"))return"onion";
   if(n.includes("помидор"))return"tomato";
   if(n.includes("огурц"))return"cucumber";
   if(n.includes("кабачк"))return"zucchini";
-  if(n.includes("перец"))return"pepper";
+  
+  // Разделяем перец болгарский и перец как специю
+  if(n.includes("перец болгарский")||n.includes("перец")){
+    if(n.includes("молотый")||n.includes("черный")||n.includes("красный")) return "spices";
+    return"pepper";
+  }
+  
   if(n.includes("шпинат"))return"spinach";
   if(n.includes("свёкла")||n.includes("свекла"))return"beet";
   if(n.includes("батат"))return"sweet_potato";
-  if(n.includes("овощные смеси"))return"veg_mix";
+  
+  // Ловит "овощная смесь", "овощи"
+  if(n.includes("овощная смесь")||n.includes("овощные смеси")||n.includes("овощи"))return"veg_mix";
+  
   if(n.includes("яблок"))return"apple";
   if(n.includes("банан"))return"banana";
   if(n.includes("ягоды"))return"berries";
   if(n.includes("лимон"))return"lemon";
   if(n.includes("орех"))return"nuts";
   if(n.includes("хлеб"))return"bread";
-  if(n.includes("специи"))return"spices";
-  if(n.includes("желатин")||n.includes("сахзам")||n.includes("какао"))return"gelatin";
+  
+  // Специи и приправы
+  if(n.includes("специи")||n.includes("соль")||n.includes("паприка")||n.includes("зира")||n.includes("тмин")||n.includes("корица")||n.includes("сахзам")||n.includes("какао"))return"spices";
+  if(n.includes("желатин"))return"gelatin";
   if(n.includes("шоколад"))return"chocolate";
+  
   return null;
 }
 function fmtQty(q,u){
