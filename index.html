@@ -1422,9 +1422,9 @@ function recipeIdsByCategory(cat){
 }
 
 function getBasePortions(recipe){
-  // ловит «3 порции», «3–4 порции», «на 3 порции» — берёт первое число
-  const m=String(recipe.for).match(/(\d+)(?:\s*[–\-]\s*\d+)?\s+порци/);
-  return m?parseInt(m[1]):1;
+  // Ловит «3–4 порции», «на 3 порции». Если диапазон — берёт МАКСИМАЛЬНОЕ (второе) число
+  const m = String(recipe.for).match(/(\d+)(?:\s*[–\-]\s*(\d+))?\s+порци/);
+  return m ? (m[2] ? parseInt(m[2]) : parseInt(m[1])) : 1;
 }
 
 function convertToUnit(qty,fromUnit,toUnit){
