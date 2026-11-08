@@ -84,7 +84,13 @@
   .prod-row input { padding-right: 24px; }
   .prod-row .total { padding: 9px 6px; font-size: 14px; text-align: right; font-weight: 600; background: #fffaf2; border-radius: 6px; border: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .changed input { border-color: #f0b400; background: #fffbe6; }
-
+  /* Стили для вычеркнутых продуктов */
+  .prod.checked { opacity: 0.5; background: #f9f9f9; border-color: #e0e0e0; box-shadow: none; }
+  .prod.checked .prod-name span:first-child { text-decoration: line-through; color: #888; }
+  .prod.checked .input-wrap { pointer-events: none; opacity: 0.7; }
+  .prod.checked .total { text-decoration: line-through; color: #888; }
+  .prod.checked .shelf-badge { opacity: 0.5; }
+  .prod.checked .prod-meta { opacity: 0.6; }
   .prod-meta { margin-top: 6px; font-size: 11px; color: #666; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .shelf-badge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 10.5px; font-weight: 600; }
   .shelf-vshort { background: #ffcdd2; color: #b71c1c; }
@@ -309,6 +315,7 @@
     </div>
     </div>
     <button class="alt" onclick="window.print()">🖨 Сохранить PDF</button>
+    <button class="alt" onclick="resetProductChecks()" style="background:#43a047;">🧹 Сбросить галочки в списке</button>
     <button id="installBtn" onclick="installApp()" style="display:none">📲 Установить приложение</button>
   </div>
   <details open>
@@ -1498,7 +1505,7 @@ function hasCustomEntries(){
 }
 
 // ============ STATE ============
-const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{},hiddenMenus:{},hiddenVs:{},mealSelection:{}};
+const DEFAULT_STATE={people:2,weeks:1,menus:[1],vs:[],overrides:{},prices:{},checks:[],reminderDay:0,activeMenuView:1,menuMode:'preset',customMenu:{active:false,entries:{}},userRecipes:{},userProducts:{},recipeOverrides:{},groupMode:'cat',productStores:{},menuNames:{},hiddenMenus:{},hiddenVs:{},mealSelection:{},checkedProducts:{}};
 let state=loadState();
 let currentProducts={};
 function loadState(){
@@ -1774,7 +1781,13 @@ function updateRow(key){
 }
 function updateTotals(){
   let L=0,W=0;
-  Object.values(currentProducts).forEach(p=>p.perishable?W+=p.sum:L+=p.sum);
+  const checked = state.checkedProducts || {};
+  
+  Object.values(currentProducts).forEach(p=>{
+    if (checked[p.key]) return; // ← Пропускаем вычеркнутые
+    p.perishable ? W+=p.sum : L+=p.sum;
+  });
+  
   document.getElementById('stickySub').textContent=state.weeks+' нед · '+state.people+' чел:';
   document.getElementById('stickySum').textContent=fmtP(L+W);
   const el=document.getElementById('grandTotal');
@@ -2002,8 +2015,20 @@ function buildFromCustom(){
 }
 function renderProd(p,weekly){
   const qo=state.overrides[p.key]!==undefined,po=state.prices[p.key]!==undefined;
-  let h='<div class="prod">';
-  h+=`<div class="prod-name"><span>${escHtml(p.name)}</span><span class="src">${escHtml([...p.src].join(','))}</span></div>`;
+  if(!state.checkedProducts) state.checkedProducts = {};
+  const isChecked = state.checkedProducts[p.key];
+  
+  // Добавляем класс checked, если продукт вычеркнут
+  let h=`<div class="prod ${isChecked ? 'checked' : ''}">`;
+  
+  // Добавляем чекбокс слева от названия
+  h+=`<div class="prod-name">
+        <div style="display:flex; align-items:flex-start; gap:6px;">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProductCheck('${escHtml(p.key)}', this.checked)" style="accent-color:#43a047; width:18px; height:18px; margin-top:1px; cursor:pointer;" title="Уже есть / Куплено">
+          <span>${escHtml(p.name)}</span>
+        </div>
+        <span class="src">${escHtml([...p.src].join(','))}</span>
+      </div>`;
   h+='<div class="prod-row">';
   h+=`<div class="cell"><label>кол-во</label><div class="input-wrap${qo?' changed':''}"><input type="number" step="any" min="0" id="q_${p.key}" value="${rnd(p.q)}" onchange="setQty('${p.key}',this.value)"><span class="unit">${p.unit}</span></div></div>`;
   const noPrice = p.up === 0 && p.calcUP === 0;
@@ -2037,6 +2062,24 @@ function setProductStore(key) {
   saveState();
   build(); // перерисовываем закупку
   showToast('Магазин сохранен');
+}
+function toggleProductCheck(key, checked) {
+  if(!state.checkedProducts) state.checkedProducts = {};
+  if(checked) {
+    state.checkedProducts[key] = true;
+  } else {
+    delete state.checkedProducts[key];
+  }
+  saveState();
+  build(); // Перерисовываем закупку, чтобы обновить итоговые суммы
+}
+
+function resetProductChecks() {
+  if(!state.checkedProducts || Object.keys(state.checkedProducts).length === 0) return;
+  state.checkedProducts = {};
+  saveState();
+  build();
+  showToast('Галочки в закупке сброшены');
 }
 // ============ МЕНЮ (раскладка по дням) ============
 function renderMenuTab(){
@@ -2422,7 +2465,7 @@ function renderChecks(){
 }
 function updateCompare(){
   const block=document.getElementById('compareBlock');if(!block)return;
-  let plan=0;Object.values(currentProducts).forEach(p=>plan+=p.sum);
+  let plan=0;Object.values(currentProducts).forEach(p=>{ if(!checked[p.key]) plan+=p.sum; });
   let fact=state.checks.reduce((s,c)=>s+c.sum,0);
   if(plan === 0){ block.innerHTML=''; return; }   // ← скрываем, если плана нет
   if(!state.checks.length && plan === 0){ block.innerHTML=''; return; }
